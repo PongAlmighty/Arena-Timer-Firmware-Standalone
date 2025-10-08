@@ -22,15 +22,15 @@ height_value = unit_height*chain_height
 displayio.release_displays()
 # send register
 
-R1 = DigitalInOut(board.GP2)
-G1 = DigitalInOut(board.GP3)
-B1 = DigitalInOut(board.GP4)
+R1 = DigitalInOut(board.GP14)
+G1 = DigitalInOut(board.GP28)
+B1 = DigitalInOut(board.GP15)
 R2 = DigitalInOut(board.GP5)
-G2 = DigitalInOut(board.GP8)
-B2 = DigitalInOut(board.GP9)
-CLK = DigitalInOut(board.GP11)
+G2 = DigitalInOut(board.GP29)
+B2 = DigitalInOut(board.GP6)
+CLK = DigitalInOut(board.GP26)
 STB = DigitalInOut(board.GP12)
-OE = DigitalInOut(board.GP13)
+OE = DigitalInOut(board.GP27)
 
 R1.direction = Direction.OUTPUT
 G1.direction = Direction.OUTPUT
@@ -115,9 +115,9 @@ OE.deinit()
 
 matrix = rgbmatrix.RGBMatrix(
     width = width_value, height=height_value, bit_depth=bit_depth_value,
-    rgb_pins = [board.GP2, board.GP3, board.GP4, board.GP5, board.GP8, board.GP9],
-    addr_pins = [board.GP10, board.GP16, board.GP18, board.GP20],
-    clock_pin = board.GP11, latch_pin=board.GP12, output_enable_pin=board.GP13,
+    rgb_pins = [board.GP14, board.GP28, board.GP15, board.GP5, board.GP29, board.GP6],
+    addr_pins = [board.GP7, board.GP10, board.GP8, board.GP11],
+    clock_pin = board.GP26, latch_pin=board.GP12, output_enable_pin=board.GP27,
     tile = chain_height, serpentine=serpentine_value,
     doublebuffer = True)
 

@@ -3,13 +3,13 @@
 #include "fonts.h"
 #include <string.h>
 #include <stdlib.h>
-#define CLK 11 
-#define OE   9
-#define LAT 10
-#define A   A0
-#define B   A1
-#define C   A2
-#define D   A3
+#define CLK 26 
+#define OE  27
+#define LAT 12
+#define A   7
+#define B   10
+#define C   8
+#define D   11
 
 RGBmatrixPanel matrix(A, B, C, D, CLK, LAT, OE, false, 64);
 
