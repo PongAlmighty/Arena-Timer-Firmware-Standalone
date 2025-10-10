@@ -3,6 +3,18 @@
 #include <SPI.h>
 #include <EthernetBonjour.h>
 
+// Debug flag - set to false to disable debug messages for better timing
+#define DEBUG_COMMS false
+
+// Debug printing macros
+#if DEBUG_COMMS
+    #define DEBUG_PRINT(x) Serial.print(x)
+    #define DEBUG_PRINTLN(x) Serial.println(x)
+#else
+    #define DEBUG_PRINT(x)
+    #define DEBUG_PRINTLN(x)
+#endif
+
 // Font includes (12pt and below for 64x32 display)
 #include <Fonts/FreeMono9pt7b.h>
 #include <Fonts/FreeMono12pt7b.h>
@@ -258,7 +270,7 @@ namespace Comms {
             // Handle different endpoints
             if (requestPath == "/" || requestPath.startsWith("/?")) {
                 // Serve web page
-                Serial.println("Client connected - serving web page");
+                DEBUG_PRINTLN("Client connected - serving web page");
                 client.println("HTTP/1.1 200 OK");
                 client.println("Content-Type: text/html");
                 client.println("Connection: close");
@@ -328,6 +340,10 @@ namespace Comms {
                 client.print(F(".status.show{display:block}"));
                 client.print(F(".status.success{background:#d4edda;color:#155724}"));
                 client.print(F(".status.error{background:#f8d7da;color:#721c24}"));
+                client.print(F(".apply-button{margin-top:20px;width:100%}"));
+                client.print(F(".apply-button.sticky{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);"));
+                client.print(F("width:300px;max-width:90vw;z-index:1000;box-shadow:0 4px 15px rgba(0,0,0,0.3)!important}"));
+                client.print(F(".content-with-sticky{padding-bottom:80px}"));
                 client.print(F("</style></head><body><div class='container'>"));
                 client.print(F("<h1>⏱️ Arena Timer Control</h1>"));
                 client.print(F("<div class='grid-container'>"));
@@ -410,9 +426,9 @@ namespace Comms {
                 client.print(F("<div class='form-group'><label>Server Host / IP:</label>"));
                 client.print(F("<input type='text' id='wsHost' value='10.0.0.1'>"));
                 client.print(F("</div><div class='form-group'><label>Port:</label>"));
-                client.print(F("<input type='number' id='wsPort' value='8766' min='1' max='65535'>"));
+                client.print(F("<input type='number' id='wsPort' value='8765' min='1' max='65535'>"));
                 client.print(F("</div><div class='form-group'><label>Path:</label>"));
-                client.print(F("<input type='text' id='wsPath' placeholder='/ws' value='/ws'>"));
+                client.print(F("<input type='text' id='wsPath' placeholder='/socket.io/' value='/socket.io/'>"));
                 client.print(F("</div><div style='display:flex;gap:10px'>"));
                 client.print(F("<button class='btn-start' onclick='connectWebSocket()' style='flex:1'>"));
                 client.print(F("🔗 Connect</button>"));
@@ -425,7 +441,7 @@ namespace Comms {
                 
                 client.print(F("</div>"));  // End grid-container
                 
-                client.print(F("<button class='btn-start' onclick='applySettings()' style='margin-top:20px;width:100%'>"));
+                client.print(F("<button id='applyButton' class='btn-start apply-button' onclick='applySettings()'>"));
                 client.print(F("✓ Apply All Settings</button>"));
                 
                 client.print(F("<div id='status' class='status'></div></div>"));  // End container
@@ -526,11 +542,26 @@ namespace Comms {
                 client.print(F("setTimeout(updateWebSocketStatus,1000);"));
                 client.print(F("}).catch(()=>showStatus('Disconnect failed',false));}"));
                 
+                // Sticky button logic
+                client.print(F("function updateStickyButton(){"));
+                client.print(F("const button=document.getElementById('applyButton');"));
+                client.print(F("const container=document.querySelector('.container');"));
+                client.print(F("const scrollDiff=document.body.scrollHeight-window.innerHeight;"));
+                client.print(F("const needsScroll=scrollDiff>50;"));  // Only sticky if >50px overflow
+                client.print(F("if(needsScroll){"));
+                client.print(F("button.classList.add('sticky');"));
+                client.print(F("container.classList.add('content-with-sticky');}"));
+                client.print(F("else{"));
+                client.print(F("button.classList.remove('sticky');"));
+                client.print(F("container.classList.remove('content-with-sticky');}}"));
+                client.print(F("window.addEventListener('resize',updateStickyButton);"));
+                client.print(F("window.addEventListener('load',updateStickyButton);"));
+                
                 client.print(F("setInterval(updateButtonState,2000);updateButtonState();loadThresholds();"));
                 client.print(F("setInterval(updateWebSocketStatus,3000);updateWebSocketStatus();"));
                 client.print(F("</script></body></html>"));
                 
-                Serial.println("Web page sent");
+                DEBUG_PRINTLN("Web page sent");
             } else if (requestPath == "/api/websocket/status") {
                 // Return WebSocket connection status
                 String status = "{\"connected\":";
@@ -589,11 +620,11 @@ namespace Comms {
                         sendHTTPResponse(client, 400, "application/json", 
                             "{\"status\":\"error\",\"message\":\"Cannot use 127.0.0.1 or localhost. Use your computer's actual IP address (e.g., 192.168.1.100). Find it using 'ipconfig' (Windows) or 'ifconfig' (Mac/Linux).\"}");
                     } else {
-                        Serial.print("Connecting to WebSocket: ");
-                        Serial.print(host);
-                        Serial.print(":");
-                        Serial.print(port);
-                        Serial.println(path);
+                        DEBUG_PRINT("Connecting to WebSocket: ");
+                        DEBUG_PRINT(host);
+                        DEBUG_PRINT(":");
+                        DEBUG_PRINT(port);
+                        DEBUG_PRINTLN(path);
                         
                         bool connected = wsClient->connect(host.c_str(), port, path.c_str());
                         
@@ -631,8 +662,8 @@ namespace Comms {
                     // Update thresholds from POST data
                     // Expected format: thresholds=[{"seconds":120,"color":"#FFFF00"},{"seconds":60,"color":"#FF0000"}]&default=#0000FF
                     
-                    Serial.println("Updating thresholds...");
-                    Serial.println(postData);
+                    DEBUG_PRINTLN("Updating thresholds...");
+                    DEBUG_PRINTLN(postData);
                     
                     // Parse default color
                     String defaultColorStr = "";
@@ -646,7 +677,7 @@ namespace Comms {
                         uint8_t r, g, b;
                         parseColor(defaultColorStr, r, g, b);
                         timerDisplay.setDefaultColor(r, g, b);
-                        Serial.print("Set default color: ");
+                        DEBUG_PRINT("Set default color: ");
                         Serial.println(defaultColorStr);
                     }
                     
@@ -835,7 +866,7 @@ namespace Comms {
             
             // Only log disconnect for meaningful requests (not status polling)
             if (requestPath != "/api/status") {
-                Serial.println("Client disconnected");
+                DEBUG_PRINTLN("Client disconnected");
             }
         }
     }

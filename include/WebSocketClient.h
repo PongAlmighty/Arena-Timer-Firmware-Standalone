@@ -33,9 +33,15 @@ private:
     
     bool _connected;
     bool _connectionAttempted;  // Track if user has tried to connect
+    bool _manuallyDisconnected;  // Track if user manually disconnected
     unsigned long _lastReconnectAttempt;
     unsigned long _reconnectInterval;
     bool _autoReconnect;
+    
+    // Socket.IO support
+    bool _isSocketIO;
+    bool _socketIOFallback;  // Try WebSocket if Socket.IO fails
+    String _socketIOSessionId;
     
     // Event handler
     static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length);

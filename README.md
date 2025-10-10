@@ -27,6 +27,7 @@ This firmware transforms a Waveshare RP2040-Zero and RGB matrix into a network-c
 2. **Upload Firmware**: Use PlatformIO to flash the RP2040-Zero
 3. **Network Configuration**: Device uses static IP `10.0.0.21` by default
 4. **Access Interface**: Navigate to `http://arenatimer.local` or the device IP
+5. **FightTimer Integration**: Use WebSocket connection for instant livestream synchronization
 
 ## Control Methods
 
@@ -42,35 +43,69 @@ The responsive web interface provides:
 
 ### 2. FightTimer Integration (Recommended for Livestreams)
 
-**Credit**: Integration with [FightTimer](https://github.com/PongAlmighty/FightTimer) by [PongAlmighty](https://github.com/PongAlmighty) - an excellent combat robotics livestream timer system.
+**Credit**: Integration with [FightTimer](https://github.com/PongAlmighty/FightTimer) by [TheMightyPong](https://github.com/PongAlmighty) - an excellent combat robotics livestream timer system.
 
-**Python Controller Method**:
-1. Install dependencies: `pip install python-socketio[client] requests`
+#### **Direct WebSocket Connection (Preferred)**
+
+**✅ Completely Self-Contained** - No Python dependencies or external scripts needed!
+
+1. **Run FightTimer** normally on your computer
+2. **Open Arena Timer web interface**: `http://arenatimer.local`
+3. **Configure WebSocket connection**:
+   - **Host**: IP address where FightTimer is running (e.g., `10.0.0.1`)
+   - **Port**: `8765` (FightTimer's default WebSocket port)
+   - **Path**: `/socket.io/`
+4. **Click Connect** - Timer automatically syncs with FightTimer!
+5. **Control from FightTimer's interface** - Physical timer responds with the FightTimer Control Panel
+
+**Features**:
+- **Zero Dependencies**: Built into the timer firmware
+- **Tight Synchronization**: Direct Socket.IO connection to FightTimer
+- **Automatic Reconnection**: Handles network interruptions gracefully
+- **Real-time Status**: Connection status visible in web interface
+
+#### **Python Controller Method (Alternative)**
+
+For users who prefer a bridged approach or need custom integration:
+
+1. Install dependencies: `pip install -r requirements.txt`
 2. Configure IPs in `arena_timer_controller.py`
 3. Run FightTimer normally
 4. Run: `python arena_timer_controller.py`
-5. Control from FightTimer's web interface - physical timer responds automatically!
+5. Control from FightTimer's web interface
 
 **Features**:
 - **Zero FightTimer Modifications**: Works with standard FightTimer installation
-- **Synchronized Start/Stop/Settings**: Physical timer matches FightTimer very closely (not quite perfect!)
+- **HTTP API Control**: Uses Arena Timer's REST API
 - **Robust Connection**: Automatic reconnection and error handling
 - **Debug Control**: Configurable logging for performance optimization
 
-**WebSocket Bridge (Alternative)**:
+### 3. WebSocket Bridge (Legacy/Advanced)
 
-**Credit**: For advanced users wanting direct WebSocket integration with [FightTimer](https://github.com/PongAlmighty/FightTimer) by [PongAlmighty](https://github.com/PongAlmighty).
+**Credit**: For advanced users needing custom WebSocket bridging with [FightTimer](https://github.com/PongAlmighty/FightTimer) by [TheMightyPong](https://github.com/PongAlmighty).
 
 **Bridge Method**:
-1. Run FightTimer
-2. Run: `python websocket_bridge.py` 
-3. Connect timer to bridge websocket via web interface
-4. Timer receives events directly through WebSocket protocol
+1. Install dependencies: `pip install -r requirements.txt`
+2. Run FightTimer normally
+3. Run: `python websocket_bridge.py` 
+4. Connect timer to bridge via web interface:
+   - **Host**: `localhost` or IP where bridge is running
+   - **Port**: `8766` (bridge WebSocket port)
+   - **Path**: `/ws`
+5. Timer receives events through the bridge protocol
+
+**Features**:
+- **Protocol Translation**: Converts Socket.IO to plain WebSocket
+- **Custom Integration**: Allows modification of message formats
+- **Legacy Compatibility**: For testing or custom Socket.IO scenarios
 
 **Use Cases**:
-- Multiple timer synchronization
-- Custom timer server integration
-- Low-latency direct connections
+- Multiple timer synchronization across different locations
+- Custom protocol translation or message filtering
+- Development and testing of WebSocket integrations
+- When direct Socket.IO connection needs customization
+
+**Note**: The direct WebSocket connection (Method 2A) is now preferred for most users as it eliminates the need for this bridge.
 
 ## Timer Display
 
