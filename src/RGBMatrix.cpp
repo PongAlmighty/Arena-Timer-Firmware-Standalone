@@ -8,13 +8,6 @@
 
 namespace RGBMatrix
 {
-    // Wiznet W5500 Ethernet Module pin connections
-
-    static constexpr int CS = 1;   // Chip Select
-    static constexpr int SCK = 2;  // Serial Clock
-    static constexpr int MOSI = 3; // Master Out Slave In
-    static constexpr int MISO = 4; // Master In Slave Out
-
     // Waveshare RGB-Matrix-P5-64x32 pin connections
 
     static constexpr int A = 7;
@@ -121,6 +114,15 @@ namespace RGBMatrix
     void clear()
     {
         matrix.fillScreen(0);
+    }
+
+    void show()
+    {
         matrix.show();
+    }
+
+    Adafruit_Protomatter& getMatrix()
+    {
+        return matrix;
     }
 }
