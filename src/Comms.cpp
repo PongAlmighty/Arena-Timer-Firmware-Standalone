@@ -19,6 +19,10 @@
 #include <Fonts/Org_01.h>
 #include <Fonts/Picopixel.h>
 #include <Fonts/TomThumb.h>
+// Custom fonts
+#include <Aquire_BW0ox12pt7b.h>
+#include <AquireBold_8Ma6012pt7b.h>
+#include <AquireLight_YzE0o12pt7b.h>
 
 namespace Comms {
     // Pin definitions for W5500
@@ -173,6 +177,10 @@ namespace Comms {
             case 13: return &Org_01;
             case 14: return &Picopixel;
             case 15: return &TomThumb;
+            // Custom fonts
+            case 16: return &Aquire_BW0ox12pt7b;
+            case 17: return &AquireBold_8Ma6012pt7b;
+            case 18: return &AquireLight_YzE0o12pt7b;
             default: return &FreeSansBold12pt7b; // Default to 12pt bold
         }
     }
@@ -356,6 +364,11 @@ namespace Comms {
                 client.print(F("<option value='13'>Org_01 (Retro @ 3x)</option>"));
                 client.print(F("<option value='14'>Picopixel (Tiny @ 3x)</option>"));
                 client.print(F("<option value='15'>TomThumb (Pixel @ 3x)</option>"));
+                client.print(F("</optgroup>"));
+                client.print(F("<optgroup label='Custom Fonts'>"));
+                client.print(F("<option value='16'>Aquire (12pt)</option>"));
+                client.print(F("<option value='17'>Aquire Bold (12pt)</option>"));
+                client.print(F("<option value='18'>Aquire Light (12pt)</option>"));
                 client.print(F("</optgroup>"));
                 client.print(F("</select>"));
                 client.print(F("<label for='letterSpacing' style='margin-top:15px;margin-bottom:5px'>Character Spacing:</label>"));

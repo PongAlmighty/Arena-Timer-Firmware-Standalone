@@ -20,8 +20,12 @@
 #include <Fonts/Org_01.h>
 #include <Fonts/Picopixel.h>
 #include <Fonts/TomThumb.h>
+// Custom fonts
+#include <Aquire_BW0ox12pt7b.h>
+#include <AquireBold_8Ma6012pt7b.h>
+#include <AquireLight_YzE0o12pt7b.h>
 
-// Network configuration
+// Network configuration// Network configuration
 uint8_t mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 uint8_t static_ip[] = {10, 0, 0, 21};  // Static IP address
 const char* hostname = "arenatimer";     // Access via http://arenatimer.local
