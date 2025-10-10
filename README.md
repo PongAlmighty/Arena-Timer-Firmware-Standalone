@@ -43,7 +43,7 @@ The responsive web interface provides:
 
 ### 2. FightTimer Integration (Recommended for Livestreams)
 
-**Credit**: Integration with [FightTimer](https://github.com/PongAlmighty/FightTimer) by [TheMightyPong](https://github.com/PongAlmighty) - an excellent combat robotics livestream timer system.
+**Credit**: Integration with [FightTimer](https://github.com/PongAlmighty/FightTimer) by [PongAlmighty](https://github.com/PongAlmighty) - an excellent combat robotics livestream timer system.
 
 #### **Direct WebSocket Connection (Preferred)**
 
@@ -82,7 +82,7 @@ For users who prefer a bridged approach or need custom integration:
 
 ### 3. WebSocket Bridge (Legacy/Advanced)
 
-**Credit**: For advanced users needing custom WebSocket bridging with [FightTimer](https://github.com/PongAlmighty/FightTimer) by [TheMightyPong](https://github.com/PongAlmighty).
+**Credit**: For advanced users needing custom WebSocket bridging with [FightTimer](https://github.com/PongAlmighty/FightTimer) by [PongAlmighty](https://github.com/PongAlmighty).
 
 **Bridge Method**:
 1. Install dependencies: `pip install -r requirements.txt`
