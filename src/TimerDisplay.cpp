@@ -14,6 +14,7 @@ TimerDisplay::TimerDisplay(Adafruit_Protomatter &matrix, Mode mode)
       _letter_spacing(3),   // Default letter spacing of 3 pixels
       _color(matrix.color565(255, 255, 255)), // Default white
       _default_r(0), _default_g(255), _default_b(0), // Default green
+      _brightness(255), // Default full brightness
       _threshold_count(0),
       _last_blink_ms(0),
       _blink_state(true),
@@ -416,10 +417,38 @@ uint16_t TimerDisplay::getCurrentColor()
     // Check thresholds (already sorted descending, so we check highest first)
     for (size_t i = _threshold_count; i > 0; i--) {
         if (total_seconds <= _thresholds[i-1].seconds) {
-            return _matrix.color565(_thresholds[i-1].r, _thresholds[i-1].g, _thresholds[i-1].b);
+            uint8_t r = _thresholds[i-1].r;
+            uint8_t g = _thresholds[i-1].g;
+            uint8_t b = _thresholds[i-1].b;
+            applyBrightness(r, g, b);
+            return _matrix.color565(r, g, b);
         }
     }
     
     // No threshold matched, use default color
-    return _matrix.color565(_default_r, _default_g, _default_b);
+    uint8_t r = _default_r;
+    uint8_t g = _default_g;
+    uint8_t b = _default_b;
+    applyBrightness(r, g, b);
+    return _matrix.color565(r, g, b);
+}
+
+void TimerDisplay::setBrightness(uint8_t brightness)
+{
+    _brightness = brightness;
+}
+
+uint8_t TimerDisplay::getBrightness() const
+{
+    return _brightness;
+}
+
+void TimerDisplay::applyBrightness(uint8_t& r, uint8_t& g, uint8_t& b)
+{
+    if (_brightness < 255) {
+        // Scale RGB values by brightness (0-255)
+        r = (r * _brightness) / 255;
+        g = (g * _brightness) / 255;
+        b = (b * _brightness) / 255;
+    }
 }

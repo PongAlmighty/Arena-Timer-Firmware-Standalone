@@ -416,6 +416,11 @@ namespace Comms {
                 client.print(F("<div style='display:flex;align-items:center;gap:10px'>"));
                 client.print(F("<input type='range' id='letterSpacing' min='-2' max='5' value='3' style='flex:1'>"));
                 client.print(F("<span id='spacingValue' style='min-width:30px;text-align:center'>3</span>"));
+                client.print(F("</div>"));
+                client.print(F("<label for='brightness' style='margin-top:15px;margin-bottom:5px'>Display Brightness:</label>"));
+                client.print(F("<div style='display:flex;align-items:center;gap:10px'>"));
+                client.print(F("<input type='range' id='brightness' min='0' max='255' value='255' style='flex:1'>"));
+                client.print(F("<span id='brightnessValue' style='min-width:30px;text-align:center'>100%</span>"));
                 client.print(F("</div></div></div></div>"));  // End duration-card, Font Selection section, and column 2
                 
                 // Column 3: WebSocket Connection
@@ -504,7 +509,8 @@ namespace Comms {
                 client.print(F("const defaultColor=document.getElementById('defaultColor').value;"));
                 client.print(F("const font=document.getElementById('fontSelect').value;"));
                 client.print(F("const spacing=document.getElementById('letterSpacing').value;"));
-                client.print(F("let params='action=settings&duration='+duration+'&font='+font+'&spacing='+spacing;"));
+                client.print(F("const brightness=document.getElementById('brightness').value;"));
+                client.print(F("let params='action=settings&duration='+duration+'&font='+font+'&spacing='+spacing+'&brightness='+brightness;"));
                 client.print(F("fetch('/api',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},"));
                 client.print(F("body:params}).then(()=>{"));
                 client.print(F("const thresholdData=thresholds.map(t=>t.seconds+':'+t.color).join('|');"));
@@ -515,6 +521,9 @@ namespace Comms {
                 client.print(F(".catch(()=>showStatus('Error applying settings',false))}"));
                 client.print(F("document.getElementById('letterSpacing').addEventListener('input',function(){"));
                 client.print(F("document.getElementById('spacingValue').textContent=this.value;});"));
+                client.print(F("document.getElementById('brightness').addEventListener('input',function(){"));
+                client.print(F("const percent=Math.round((this.value/255)*100);"));
+                client.print(F("document.getElementById('brightnessValue').textContent=percent+'%';});"));
                 
                 // WebSocket functions
                 client.print(F("function updateWebSocketStatus(){"));
@@ -812,12 +821,23 @@ namespace Comms {
                         spacingStr = postData.substring(spacingStart + 8, spacingEnd);
                     }
                     
-                    Serial.print("Settings - Duration: ");
-                    Serial.print(durationStr);
-                    Serial.print(", Font: ");
-                    Serial.print(fontStr);
-                    Serial.print(", Spacing: ");
-                    Serial.println(spacingStr);
+                    // Parse brightness parameter
+                    String brightnessStr = "";
+                    int brightnessStart = postData.indexOf("brightness=");
+                    if (brightnessStart >= 0) {
+                        int brightnessEnd = postData.indexOf('&', brightnessStart);
+                        if (brightnessEnd < 0) brightnessEnd = postData.length();
+                        brightnessStr = postData.substring(brightnessStart + 11, brightnessEnd);
+                    }
+                    
+                    DEBUG_PRINT("Settings - Duration: ");
+                    DEBUG_PRINT(durationStr);
+                    DEBUG_PRINT(", Font: ");
+                    DEBUG_PRINT(fontStr);
+                    DEBUG_PRINT(", Spacing: ");
+                    DEBUG_PRINT(spacingStr);
+                    DEBUG_PRINT(", Brightness: ");
+                    DEBUG_PRINTLN(brightnessStr);
                     
                     // Apply duration setting
                     if (durationStr.length() > 0) {
@@ -839,18 +859,28 @@ namespace Comms {
                         timerDisplay.setFont(font);
                         timerDisplay.setTextSize(textSize);
                         
-                        Serial.print("Applied font ID: ");
-                        Serial.print(fontId);
-                        Serial.print(" with text size: ");
-                        Serial.println(textSize);
+                        DEBUG_PRINT("Applied font ID: ");
+                        DEBUG_PRINT(fontId);
+                        DEBUG_PRINT(" with text size: ");
+                        DEBUG_PRINTLN(textSize);
                     }
                     
                     // Apply letter spacing setting
                     if (spacingStr.length() > 0) {
                         int8_t spacing = spacingStr.toInt();
                         timerDisplay.setLetterSpacing(spacing);
-                        Serial.print("Applied letter spacing: ");
-                        Serial.println(spacing);
+                        DEBUG_PRINT("Applied letter spacing: ");
+                        DEBUG_PRINTLN(spacing);
+                    }
+                    
+                    // Apply brightness setting
+                    if (brightnessStr.length() > 0) {
+                        int brightness = brightnessStr.toInt();
+                        if (brightness >= 0 && brightness <= 255) {
+                            timerDisplay.setBrightness((uint8_t)brightness);
+                            DEBUG_PRINT("Applied brightness: ");
+                            DEBUG_PRINTLN(brightness);
+                        }
                     }
                     
                     sendHTTPResponse(client, 200, "text/plain", "Settings applied");

@@ -78,6 +78,14 @@ public:
     /// @param b Blue (0-255)
     void setDefaultColor(uint8_t r, uint8_t g, uint8_t b);
 
+    /// @brief Set display brightness
+    /// @param brightness Brightness level (0-255, where 0 is off and 255 is full brightness)
+    void setBrightness(uint8_t brightness);
+
+    /// @brief Get current brightness level
+    /// @return Current brightness (0-255)
+    uint8_t getBrightness() const;
+
     /// @brief Get the underlying Timer object
     /// @return Reference to the Timer
     Timer &getTimer();
@@ -98,6 +106,7 @@ private:
     int8_t _letter_spacing;        // Extra spacing between characters (pixels)
     uint16_t _color;
     uint8_t _default_r, _default_g, _default_b;  // Default color (no threshold)
+    uint8_t _brightness;  // Display brightness (0-255)
     
     // Color thresholds (sorted by seconds, descending)
     static const size_t MAX_THRESHOLDS = 10;
@@ -147,4 +156,10 @@ private:
     /// @brief Get the appropriate color based on remaining time and thresholds
     /// @return 16-bit color value
     uint16_t getCurrentColor();
+
+    /// @brief Apply brightness scaling to RGB color
+    /// @param r Red (0-255), modified in place
+    /// @param g Green (0-255), modified in place
+    /// @param b Blue (0-255), modified in place
+    void applyBrightness(uint8_t& r, uint8_t& g, uint8_t& b);
 };
