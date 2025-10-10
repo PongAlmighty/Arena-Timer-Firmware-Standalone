@@ -4,6 +4,18 @@
 #include <Comms.h>
 #include <WebSocketClient.h>
 
+// Debug flag - set to false to disable debug messages for better timing
+#define DEBUG_MAIN false
+
+// Debug printing macros
+#if DEBUG_MAIN
+    #define DEBUG_PRINT(x) Serial.print(x)
+    #define DEBUG_PRINTLN(x) Serial.println(x)
+#else
+    #define DEBUG_PRINT(x)
+    #define DEBUG_PRINTLN(x)
+#endif
+
 // Include various fonts (12pt and below for 64x32 display)
 #include <Fonts/FreeMono9pt7b.h>
 #include <Fonts/FreeMono12pt7b.h>
@@ -42,16 +54,16 @@ void setup()
   Serial.begin(115200);
   delay(1000);
   
-  Serial.println("\n=== Arena Timer Firmware ===");
+  DEBUG_PRINTLN("\n=== Arena Timer Firmware ===");
   
   // Initialize RGB Matrix
-  Serial.println("Initializing RGB Matrix...");
+  DEBUG_PRINTLN("Initializing RGB Matrix...");
   RGBMatrix::init();
   RGBMatrix::setOrientation(180);
   RGBMatrix::clear();
   
   // Initialize Ethernet with static IP
-  Serial.println("Initializing Ethernet...");
+  DEBUG_PRINTLN("Initializing Ethernet...");
   bool ethernet_ok = false;
   String ip_address;
   
@@ -59,28 +71,28 @@ void setup()
   {
     ethernet_ok = true;
     ip_address = Comms::getIPAddressString();
-    Serial.print("IP Address: ");
-    Serial.println(ip_address);
+    DEBUG_PRINT("IP Address: ");
+    DEBUG_PRINTLN(ip_address);
     
     // Initialize mDNS for easy hostname access
     if (Comms::initMDNS(hostname))
     {
-      Serial.print("Access timer at: http://");
-      Serial.print(hostname);
-      Serial.println(".local");
+      DEBUG_PRINT("Access timer at: http://");
+      DEBUG_PRINT(hostname);
+      DEBUG_PRINTLN(".local");
     }
   }
   else
   {
-    Serial.println("ERROR: Ethernet initialization failed!");
-    Serial.println("Timer will work, but web interface is unavailable.");
-    Serial.println("Check your W5500 wiring and connections.");
+    DEBUG_PRINTLN("ERROR: Ethernet initialization failed!");
+    DEBUG_PRINTLN("Timer will work, but web interface is unavailable.");
+    DEBUG_PRINTLN("Check your W5500 wiring and connections.");
   }
   
   if (ethernet_ok)
   {
-    Serial.print("IP Address: ");
-    Serial.println(ip_address);
+    DEBUG_PRINT("IP Address: ");
+    DEBUG_PRINTLN(ip_address);
     
     // Display IP address on LED matrix for 5 seconds
     RGBMatrix::clear();
@@ -111,35 +123,35 @@ void setup()
     
     // Start web server
     Comms::startWebServer(80);
-    Serial.println("Web server started!");
+    DEBUG_PRINTLN("Web server started!");
   }
   
   // Configure initial timer display
-  Serial.println("Configuring timer display...");
+  DEBUG_PRINTLN("Configuring timer display...");
   timerDisplay.setFont(&FreeSansBold12pt7b);
   // Default color thresholds already set in constructor: Blue (default), Yellow (<2min), Red (<1min)
   timerDisplay.getTimer().setDuration({3, 0, 0});  // 3 minutes default
   timerDisplay.getTimer().reset();
   
   // Initialize WebSocket client
-  Serial.println("Initializing WebSocket client...");
+  DEBUG_PRINTLN("Initializing WebSocket client...");
   wsClient = new WebSocketClient(&timerDisplay.getTimer());
-  Serial.println("WebSocket client ready (not connected)");
+  DEBUG_PRINTLN("WebSocket client ready (not connected)");
   
   // Pass WebSocket client to Comms for API access
   Comms::setWebSocketClient(wsClient);
   
-  Serial.println("\n=== Setup Complete ===");
+  DEBUG_PRINTLN("\n=== Setup Complete ===");
   if (ethernet_ok)
   {
-    Serial.println("Web Interface:");
-    Serial.print("  - http://");
-    Serial.print(hostname);
-    Serial.println(".local");
-    Serial.print("  - http://");
-    Serial.println(ip_address);
+    DEBUG_PRINTLN("Web Interface:");
+    DEBUG_PRINT("  - http://");
+    DEBUG_PRINT(hostname);
+    DEBUG_PRINTLN(".local");
+    DEBUG_PRINT("  - http://");
+    DEBUG_PRINTLN(ip_address);
   }
-  Serial.println("======================\n");
+  DEBUG_PRINTLN("======================\n");
 }
 
 void loop()
@@ -166,37 +178,37 @@ void loop()
   if (millis() - last_serial >= 5000)
   {
     Timer::Components remaining = timerDisplay.getTimer().getRemainingTime();
-    Serial.print("Status: ");
+    DEBUG_PRINT("Status: ");
     if (timerDisplay.getTimer().isExpired())
     {
-      Serial.print("EXPIRED ");
+      DEBUG_PRINT("EXPIRED ");
     }
     else if (timerDisplay.getTimer().isRunning())
     {
-      Serial.print("RUNNING ");
+      DEBUG_PRINT("RUNNING ");
     }
     else if (timerDisplay.getTimer().isPaused())
     {
-      Serial.print("PAUSED ");
+      DEBUG_PRINT("PAUSED ");
     }
     else if (timerDisplay.getTimer().isIdle())
     {
-      Serial.print("IDLE ");
+      DEBUG_PRINT("IDLE ");
     }
     
-    Serial.print("| Time: ");
-    Serial.print(remaining.minutes);
-    Serial.print(":");
-    if (remaining.seconds < 10) Serial.print("0");
-    Serial.print(remaining.seconds);
-    Serial.print(".");
-    if (remaining.milliseconds < 100) Serial.print("0");
-    if (remaining.milliseconds < 10) Serial.print("0");
-    Serial.println(remaining.milliseconds);
+    DEBUG_PRINT("| Time: ");
+    DEBUG_PRINT(remaining.minutes);
+    DEBUG_PRINT(":");
+    if (remaining.seconds < 10) DEBUG_PRINT("0");
+    DEBUG_PRINT(remaining.seconds);
+    DEBUG_PRINT(".");
+    if (remaining.milliseconds < 100) DEBUG_PRINT("0");
+    if (remaining.milliseconds < 10) DEBUG_PRINT("0");
+    DEBUG_PRINTLN(remaining.milliseconds);
     
     last_serial = millis();
   }
   
   // Small delay to prevent overwhelming the system
-  delay(10);
+  // delay(10);
 }

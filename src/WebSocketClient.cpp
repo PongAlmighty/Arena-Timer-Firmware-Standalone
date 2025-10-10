@@ -1,11 +1,24 @@
 #include "WebSocketClient.h"
 
+// Debug flag - set to false to disable debug messages for better timing
+#define DEBUG_WEBSOCKET true
+
+// Debug printing macros
+#if DEBUG_WEBSOCKET
+    #define DEBUG_PRINT(x) Serial.print(x)
+    #define DEBUG_PRINTLN(x) Serial.println(x)
+#else
+    #define DEBUG_PRINT(x)
+    #define DEBUG_PRINTLN(x)
+#endif
+
 // Static instance pointer for callback
 WebSocketClient* WebSocketClient::_instance = nullptr;
 
 WebSocketClient::WebSocketClient(Timer* timer)
-    : _timer(timer), _connected(false), _lastReconnectAttempt(0), 
-      _reconnectInterval(5000), _autoReconnect(true), _serverPort(8765) {
+    : _timer(timer), _connected(false), _connectionAttempted(false),
+      _lastReconnectAttempt(0), _reconnectInterval(5000), 
+      _autoReconnect(true), _serverPort(8765) {
     
     // Set instance for static callback
     _instance = this;
@@ -22,6 +35,7 @@ bool WebSocketClient::connect(const char* host, uint16_t port, const char* path)
         disconnect();
     }
     
+    _connectionAttempted = true;  // Mark that user has attempted connection
     _serverHost = String(host);
     _serverPort = port;
     _serverPath = String(path);
@@ -29,14 +43,16 @@ bool WebSocketClient::connect(const char* host, uint16_t port, const char* path)
     // Build URL for display
     _fullUrl = "ws://" + _serverHost + ":" + String(_serverPort) + _serverPath;
     
-    Serial.print("Connecting to WebSocket: ");
-    Serial.println(_fullUrl);
+    DEBUG_PRINT("Connecting to WebSocket server: ");
+    DEBUG_PRINTLN(_fullUrl);
+    DEBUG_PRINTLN("NOTE: Socket.IO v3+ is not fully supported by this library.");
+    DEBUG_PRINTLN("For best results, use a plain WebSocket server or Socket.IO v2.");
     
-    // Connect to WebSocket server
+    // Connect using plain WebSocket (Socket.IO v3+ not supported by beginSocketIO)
     _client.begin(_serverHost.c_str(), _serverPort, _serverPath.c_str());
     
     // Connection result will come via callback
-    Serial.println("WebSocket connection initiated...");
+    DEBUG_PRINTLN("WebSocket connection initiated...");
     
     return true;  // Actual connection status will be updated via callback
 }
@@ -45,8 +61,9 @@ void WebSocketClient::disconnect() {
     if (_connected) {
         _client.disconnect();
         _connected = false;
-        Serial.println("WebSocket disconnected");
+        DEBUG_PRINTLN("WebSocket disconnected");
     }
+    _connectionAttempted = false;  // Clear connection attempt flag
 }
 
 bool WebSocketClient::isConnected() {
@@ -60,10 +77,10 @@ void WebSocketClient::poll() {
 const char* WebSocketClient::getStatus() {
     if (_connected) {
         return "Connected";
-    } else if (_autoReconnect && _serverHost.length() > 0) {
+    } else if (_connectionAttempted && _autoReconnect && _serverHost.length() > 0) {
         return "Reconnecting...";
     } else {
-        return "Disconnected";
+        return "Not connected";
     }
 }
 
@@ -81,32 +98,32 @@ void WebSocketClient::webSocketEvent(WStype_t type, uint8_t * payload, size_t le
 void WebSocketClient::handleWebSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
     switch(type) {
         case WStype_DISCONNECTED:
-            Serial.println("WebSocket disconnected");
+            DEBUG_PRINTLN("WebSocket disconnected");
             _connected = false;
             break;
             
         case WStype_CONNECTED:
-            Serial.print("WebSocket connected to: ");
-            Serial.println((char*)payload);
+            DEBUG_PRINT("Socket.IO connected to: ");
+            DEBUG_PRINTLN((char*)payload);
             _connected = true;
             
-            // Send initial connection message for Socket.IO compatibility
-            _client.sendTXT("{\"type\":\"connect\"}");
+            // Socket.IO client - connection is managed by the library
+            // No need to send manual connection message
             break;
             
         case WStype_TEXT:
             {
                 String data = String((char*)payload);
-                Serial.print("WebSocket message received: ");
-                Serial.println(data);
+                DEBUG_PRINT("WebSocket message received: ");
+                DEBUG_PRINTLN(data);
                 
                 // Parse JSON message
                 JsonDocument doc;
                 DeserializationError error = deserializeJson(doc, data);
                 
                 if (error) {
-                    Serial.print("JSON parse error: ");
-                    Serial.println(error.c_str());
+                    DEBUG_PRINT("JSON parse error: ");
+                    DEBUG_PRINTLN(error.c_str());
                     return;
                 }
                 
@@ -131,19 +148,19 @@ void WebSocketClient::handleWebSocketEvent(WStype_t type, uint8_t * payload, siz
             break;
             
         case WStype_BIN:
-            Serial.println("WebSocket binary message received (ignored)");
+            DEBUG_PRINTLN("WebSocket binary message received (ignored)");
             break;
             
         case WStype_PING:
-            Serial.println("WebSocket ping received");
+            DEBUG_PRINTLN("WebSocket ping received");
             break;
             
         case WStype_PONG:
-            Serial.println("WebSocket pong received");
+            DEBUG_PRINTLN("WebSocket pong received");
             break;
             
         case WStype_ERROR:
-            Serial.println("WebSocket error occurred");
+            DEBUG_PRINTLN("WebSocket error occurred");
             _connected = false;
             break;
             
@@ -151,7 +168,7 @@ void WebSocketClient::handleWebSocketEvent(WStype_t type, uint8_t * payload, siz
         case WStype_FRAGMENT_BIN_START:
         case WStype_FRAGMENT:
         case WStype_FRAGMENT_FIN:
-            Serial.println("WebSocket fragment received");
+            DEBUG_PRINTLN("WebSocket fragment received");
             break;
     }
 }
@@ -160,22 +177,16 @@ void WebSocketClient::handleTimerUpdate(JsonObject& obj) {
     const char* action = obj["action"];
     
     if (action == nullptr) {
-        Serial.println("No action field in timer_update");
+        DEBUG_PRINTLN("No action field in timer_update");
         return;
     }
     
-    Serial.print("Timer action: ");
-    Serial.println(action);
+    DEBUG_PRINT("Timer action: ");
+    DEBUG_PRINTLN(action);
     
     if (strcmp(action, "start") == 0) {
-        // Start timer with specified time
-        int minutes = obj["minutes"] | 3;  // Default 3 minutes
-        int seconds = obj["seconds"] | 0;  // Default 0 seconds
-        
-        Serial.printf("Starting timer: %d:%02d\n", minutes, seconds);
-        
-        _timer->setDuration({(unsigned int)minutes, (unsigned int)seconds, 0});
-        _timer->reset();
+        // Just start the timer - duration setting and reset are handled by reset events
+        DEBUG_PRINTLN("Starting timer (resume if paused, or start if reset)");
         _timer->start();
         
     } else if (strcmp(action, "stop") == 0) {
@@ -188,8 +199,18 @@ void WebSocketClient::handleTimerUpdate(JsonObject& obj) {
         
         Serial.printf("Resetting timer: %d:%02d\n", minutes, seconds);
         
+        // Check if timer was actively running before reset (not expired)
+        // Only restart if it was running and not expired (FightTimer behavior)
+        bool wasRunning = _timer->isRunning() && !_timer->isPaused() && !_timer->isExpired();
+        
         _timer->setDuration({(unsigned int)minutes, (unsigned int)seconds, 0});
         _timer->reset();
+        
+        // If timer was actively running (not expired), restart it (mimic FightTimer behavior)
+        if (wasRunning) {
+            Serial.println("Timer was actively running, restarting after reset");
+            _timer->start();
+        }
         
     } else if (strcmp(action, "settings") == 0) {
         // Handle settings update

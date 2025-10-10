@@ -32,6 +32,7 @@ private:
     String _fullUrl;
     
     bool _connected;
+    bool _connectionAttempted;  // Track if user has tried to connect
     unsigned long _lastReconnectAttempt;
     unsigned long _reconnectInterval;
     bool _autoReconnect;

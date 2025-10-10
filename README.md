@@ -1,240 +1,174 @@
-# Arena-Timer-Firmware
+# Arena Timer Firmware
 
-Embedded firmware for a custom arena timer, built on the Waveshare RGB-Matrix-P5-64x32 driven by a Waveshare RP2040-Zero and controlled through an ethernet interface with the W5500.
+Professional countdown timer for combat robotics arenas, featuring a large 64x32 RGB LED matrix display with multiple control methods including livestream integration.
 
-## Features
+## Overview
 
-✨ **Large LED Matrix Display** - Crisp, centered countdown timer on 64x32 RGB matrix  
-🌐 **Web Interface** - Clean, modern control interface accessible via Ethernet  
-🔌 **Static IP + mDNS** - Reliable connectivity with hostname support  
-🎨 **Customizable** - Control colors, fonts, text size, and duration from the web UI  
-⏱️ **Multiple Modes** - Countdown timer or stopwatch modes  
-💡 **Visual Feedback** - Different blink patterns for idle, paused, and expired states  
+This firmware transforms a Waveshare RP2040-Zero and RGB matrix into a network-controlled arena timer. Built specifically for combat robotics events, it provides precise countdown timing with multiple control interfaces and livestream synchronization capabilities.
 
 ## Hardware Requirements
 
 - **Microcontroller**: Waveshare RP2040-Zero
 - **Display**: Waveshare RGB-Matrix-P5-64x32 (HUB75 interface)
 - **Network**: Wiznet W5500 Ethernet module
-- **Power**: 5V power supply for RGB matrix
+- **Power**: 5V power supply (adequate current for RGB matrix)
 
-## Getting Started
+## Key Features
 
-### 1. Upload Firmware
+- **Large, Bright Display** - 64x32 RGB matrix with customizable colors and fonts
+- **Multiple Control Methods** - Web UI, FightTimer integration, or direct WebSocket
+- **Network Connectivity** - Static IP with mDNS hostname support
+- **Precision Timing** - Millisecond accuracy with visual state indicators
+- **Livestream Integration** - Seamless synchronization with broadcast software
 
-1. Install [PlatformIO](https://platformio.org/)
-2. Clone this repository
-3. Open in PlatformIO
-4. Upload to your RP2040-Zero
+## Quick Start
 
-### 2. Connect to Network
+1. **Hardware Setup**: Connect W5500 Ethernet module via SPI and RGB matrix via HUB75
+2. **Upload Firmware**: Use PlatformIO to flash the RP2040-Zero
+3. **Network Configuration**: Device uses static IP `10.0.0.21` by default
+4. **Access Interface**: Navigate to `http://arenatimer.local` or the device IP
 
-**Physical Connections:**
-- Connect W5500 to RP2040-Zero via SPI:
-  - CS (Chip Select) → GPIO 1
-  - SCK (Serial Clock) → GPIO 2
-  - MOSI (Master Out Slave In) → GPIO 3
-  - MISO (Master In Slave Out) → GPIO 4
-- Connect Ethernet cable from W5500 to your network switch
-- Power on the device
+## Control Methods
 
-**Network Configuration:**
-The timer uses a **static IP address: 10.0.0.177** by default. On first boot, the IP address is displayed on the LED matrix in green for 5 seconds.
+### 1. Web Interface (Built-in)
 
-**To change the IP address**, edit the `static_ip` array in `main.cpp`:
-```cpp
-uint8_t static_ip[] = {10, 0, 0, 177};  // Change to your desired IP
-```
+**Access**: `http://arenatimer.local` or device IP address
 
-### 3. Access Web Interface
+The responsive web interface provides:
+- **Timer Controls**: Start, pause, reset with precise duration setting
+- **Display Customization**: Color picker, font selection, and text scaling
+- **Live Status**: Real-time timer state and connection monitoring
+- **WebSocket Configuration**: Direct connection to external servers
 
-You can access the timer control interface in two ways:
+### 2. FightTimer Integration (Recommended for Livestreams)
 
-#### Option A: Use Hostname (Recommended)
-Simply open your browser and navigate to:
-```
-http://arenatimer.local
-```
+**Credit**: Integration with [FightTimer](https://github.com/PongAlmighty/FightTimer) by [PongAlmighty](https://github.com/PongAlmighty) - an excellent combat robotics livestream timer system.
 
-> **Note**: mDNS (hostname resolution) works automatically on:
-> - **macOS** - Built-in support
-> - **Linux** - Install `avahi-daemon`
-> - **Windows** - Install [Bonjour Print Services](https://support.apple.com/kb/DL999)
+**Python Controller Method**:
+1. Install dependencies: `pip install python-socketio[client] requests`
+2. Configure IPs in `arena_timer_controller.py`
+3. Run FightTimer normally
+4. Run: `python arena_timer_controller.py`
+5. Control from FightTimer's web interface - physical timer responds automatically!
 
-#### Option B: Use IP Address
-If hostname doesn't work, check the Serial Monitor or LED matrix display for the IP address, then navigate to:
-```
-http://192.168.x.x
-```
+**Features**:
+- **Zero FightTimer Modifications**: Works with standard FightTimer installation
+- **Synchronized Start/Stop/Settings**: Physical timer matches FightTimer very closely (not quite perfect!)
+- **Robust Connection**: Automatic reconnection and error handling
+- **Debug Control**: Configurable logging for performance optimization
 
-## Web Interface Usage
+**WebSocket Bridge (Alternative)**:
 
-The web interface provides complete control over the timer:
+**Credit**: For advanced users wanting direct WebSocket integration with [FightTimer](https://github.com/PongAlmighty/FightTimer) by [PongAlmighty](https://github.com/PongAlmighty).
 
-### Duration Settings
-- **Minutes**: Set 0-99 minutes
-- **Seconds**: Set 0-59 seconds  
-- **Milliseconds**: Set 0-999 milliseconds (in 100ms increments)
+**Bridge Method**:
+1. Run FightTimer
+2. Run: `python websocket_bridge.py` 
+3. Connect timer to bridge websocket via web interface
+4. Timer receives events directly through WebSocket protocol
 
-### Display Settings
-- **Color Picker**: Choose any RGB color for the timer display
-- **Font Selection**: 5 font options from small (9pt) to extra large (24pt)
-- **Text Size**: 1x, 2x, or 3x scaling multiplier
+**Use Cases**:
+- Multiple timer synchronization
+- Custom timer server integration
+- Low-latency direct connections
 
-### Controls
-- **Start** - Begin countdown (or resume if paused)
-- **Pause** - Pause the timer (can be resumed)
-- **Reset** - Stop and reset to initial duration
+## Timer Display
 
-### Timer States
-- **Idle** - Timer reset, showing initial duration (steady display)
-- **Running** - Timer actively counting down (steady display)
-- **Paused** - Timer stopped mid-countdown (slow blink, 1 second intervals)
-- **Expired** - Timer reached zero (rapid flash, 500ms intervals)
+**Automatic Format Switching**:
+- `15:30` - Minutes and seconds (≥10 min)
+- `5:30` - Single digit minutes (<10 min)  
+- `45.7` - Seconds with decimal precision (<1 min)
 
-### WebSocket Connection
-
-Connect your timer to a WebSocket server (such as [FightTimer](https://github.com/PongAlmighty/FightTimer)) for synchronized livestream control:
-
-1. **Enter Server Details**:
-   - **Host**: IP address or hostname of WebSocket server
-   - **Port**: Server port (default: 8765 for FightTimer)
-   - **Path**: WebSocket endpoint path (default: `/socket.io/`)
-
-2. **Connect**: Click "Connect" to establish connection
-
-3. **Monitor Status**: Connection status displayed in UI with current server URL
-
-4. **Persistent Connection**: WebSocket connection remains active even after closing the web interface
-
-The timer will automatically respond to timer events from the server:
-- **Start** - Begin countdown with specified duration
-- **Stop** - Pause the timer
-- **Reset** - Reset timer to new duration
-- **Settings** - Update timer configuration
-
-#### FightTimer Integration
-
-This firmware is designed to work with [FightTimer](https://github.com/PongAlmighty/FightTimer), a combat robotics livestream timer system. When connected, your physical arena timer will stay in perfect sync with the on-screen overlay timer.
-
-**Supported Message Formats**:
-```json
-// Direct action format
-{"action": "start"}
-
-// Timer update format
-{"timer_update": {"action": "start", "minutes": 3, "seconds": 0}}
-
-// Socket.IO array format
-["timer_update", {"action": "reset", "minutes": 3, "seconds": 0}]
-```
-
-**Connection remains active** after closing the web UI, allowing the timer to continue responding to livestream control events.
-
-## Display Formats
-
-The timer automatically switches formats based on remaining time:
-
-- **≥10 minutes**: `MM:SS` format (e.g., `15:30`)
-- **<10 minutes**: `M:SS` format (e.g., `5:30`)
-- **<1 minute**: `SS.D` format (e.g., `45.7` = 45.7 seconds)
+**Visual States**:
+- **Idle**: Steady display showing set duration
+- **Running**: Steady countdown display
+- **Paused**: Slow blink (1 second intervals)
+- **Expired**: Rapid flash (500ms intervals)
 
 ## Network Configuration
 
-### Default Settings
-- **MAC Address**: `DE:AD:BE:EF:FE:ED`
-- **Static IP**: `10.0.0.177`
-- **Hostname**: `arenatimer` (via mDNS)
+**Default Settings**:
+- IP Address: `10.0.0.21`
+- Hostname: `arenatimer.local`
+- MAC: `DE:AD:BE:EF:FE:ED`
 
-### Customization
-To change network settings, edit `main.cpp`:
+**Customization**: Edit network settings in `src/main.cpp`
 
-```cpp
-uint8_t mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};     // MAC address
-uint8_t static_ip[] = {10, 0, 0, 177};                     // Static IP
-const char* hostname = "arenatimer";                       // mDNS hostname
+**Network Tips**:
+- Use static IP subnet (e.g., `10.0.0.x`)
+- No DHCP server required
+- Consider VLAN isolation for arena networks
+
+## API Reference
+
+**REST Endpoints**:
+- `GET /` - Web interface
+- `GET /api?action=start&minutes=3&seconds=0` - Timer control
+- `POST /api/websocket/connect` - WebSocket connection management
+
+**WebSocket Protocol**:
+```json
+{"action": "start", "minutes": 3, "seconds": 0}
+{"action": "stop"}
+{"action": "reset", "minutes": 3, "seconds": 0}
 ```
 
-### Network Setup Tips
-1. **Ensure all devices use the same subnet** (e.g., `10.0.0.x`)
-2. **Set your PC's Ethernet adapter** to a static IP like `10.0.0.1` with subnet mask `255.255.255.0`
-3. **Configure your switch** (if managed) to use a static IP in the same subnet (e.g., `10.0.0.10`)
-4. **No DHCP server is required** - all devices use static IPs
+## Performance Optimization
 
-### VLAN Setup (Advanced)
-For arena setups with multiple devices, consider using PortVLAN on your managed switch to isolate control systems from public/robot networks.
+**Debug Flags** (for reduced latency):
+- **Python Controller**: Set `DEBUG_OUTPUT = False`
+- **Arduino Main**: Set `#define DEBUG_MAIN false`
+- **Arduino WebSocket**: Set `#define DEBUG_WEBSOCKET false`
+- **WebSocket Bridge**: Set `DEBUG_FORWARDING = False`
+
+Disabling debug output significantly improves response times and timing consistency.
 
 ## Troubleshooting
 
-### Can't Access Web Interface
+**Connection Issues**:
+1. Verify IP address displayed on matrix at startup
+2. Ensure same subnet (`10.0.0.x`)
+3. Test with `ping 10.0.0.21`
+4. Check serial monitor for initialization status
 
-1. **Check Serial Monitor** - Verify Ethernet initialization succeeded
-2. **Check LED Matrix** - IP address is displayed in green for 5 seconds on startup
-3. **Verify Same Subnet** - Ensure timer (`10.0.0.177`) and PC are on same subnet (e.g., `10.0.0.x`)
-4. **Check PC IP** - Set your PC's Ethernet adapter to static IP like `10.0.0.1` with mask `255.255.255.0`
-5. **Try IP Address** - If hostname doesn't work, use the IP directly: `http://10.0.0.177`
-6. **Check Cables** - Verify Ethernet cable is properly connected
-7. **Ping Test** - Try `ping 10.0.0.177` to verify connectivity
-
-### Ethernet Not Initializing
-
-1. **Check Wiring** - Verify W5500 SPI connections (CS, SCK, MOSI, MISO)
-2. **Check Power** - W5500 requires stable 3.3V power
-3. **Serial Debug** - Monitor serial output for error messages
-
-### Display Issues
-
-1. **Check Orientation** - Display orientation set to 180° by default
-2. **Check Power** - RGB matrix requires adequate 5V power supply
-3. **Font Size** - Try smaller font/text size if text doesn't fit
+**Display Issues**:
+1. Verify RGB matrix power supply adequacy (5V @4A recommended)
+2. Check HUB75 cable connections
+3. Try different font sizes and character spacings if text doesn't fit
 
 ## Development
 
-### Project Structure
+**Project Structure**:
 ```
-include/
-  ├── Comms.h          - Ethernet and web server
-  ├── RGBMatrix.h      - RGB matrix interface
-  ├── Timer.h          - Timer logic and state management
-  └── TimerDisplay.h   - Timer rendering and display
 src/
-  ├── main.cpp         - Main application
-  ├── Comms.cpp        - Web server and API implementation
-  ├── RGBMatrix.cpp    - Matrix initialization
-  ├── Timer.cpp        - Timer calculations
-  └── TimerDisplay.cpp - Display rendering and formatting
+├── main.cpp              # Main application
+├── Timer.cpp             # Timing logic
+├── TimerDisplay.cpp      # Display rendering
+├── Comms.cpp            # Web server & API
+└── WebSocketClient.cpp   # WebSocket integration
+
+include/                  # Header files
+arena_timer_controller.py # FightTimer integration
+arduino_websocket_bridge.py # WebSocket bridge
+requirements.txt         # Python dependencies
 ```
 
-### API Endpoints
+**Build System**: PlatformIO with RP2040 platform
 
-The web interface uses a simple REST API:
+## Credits
 
-**GET** `/` - Serve web interface HTML  
-**GET** `/api?action=<start|stop|reset>&minutes=<M>&seconds=<S>&milliseconds=<MS>&color=<HEX>&font=<0-4>&size=<1-3>`
+**FightTimer Integration**: Special thanks to [PongAlmighty](https://github.com/PongAlmighty) for creating [FightTimer](https://github.com/PongAlmighty/FightTimer), the excellent combat robotics livestream timer system that inspired this hardware integration.
 
-**WebSocket Control**:
-- **GET** `/api/websocket/status` - Get connection status and current server URL
-- **POST** `/api/websocket/connect` - Connect to WebSocket server (body: `host=<HOST>&port=<PORT>&path=<PATH>`)
-- **POST** `/api/websocket/disconnect` - Disconnect from WebSocket server
-
-Example:
-```
-http://arenatimer.local/api?action=start&minutes=5&seconds=30&color=FF0000&font=2&size=2
-```
+**Libraries**:
+- [Adafruit Protomatter](https://github.com/adafruit/Adafruit_Protomatter) - RGB matrix driver
+- [Arduino Ethernet](https://github.com/arduino-libraries/Ethernet) - W5500 support
+- [WebSockets](https://github.com/Links2004/arduinoWebSockets) - WebSocket client
+- [ArduinoJson](https://arduinojson.org/) - JSON parsing
 
 ## License
 
 See [LICENSE](LICENSE) file for details.
 
-## Credits
-
-Built using:
-- [Adafruit Protomatter](https://github.com/adafruit/Adafruit_Protomatter) - RGB matrix driver
-- [Arduino Ethernet Library](https://github.com/arduino-libraries/Ethernet) - W5500 support
-- [EthernetBonjour](https://github.com/TrippyLighting/EthernetBonjour) - mDNS/hostname resolution
-- [WebSockets Library](https://github.com/Links2004/arduinoWebSockets) - WebSocket client for RP2040
-- [ArduinoJson](https://arduinojson.org/) - JSON parsing for WebSocket messages
-
 ---
 
-**Made for combat robotics arenas** 🤖⚔️
+**Built for Combat Robotics** 🤖⚔️ | **Livestream Ready** 📡 | **Arena Tested** ✅

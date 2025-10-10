@@ -408,11 +408,11 @@ namespace Comms {
                 client.print(F("<p style='font-size:13px;color:#666;margin-bottom:15px'>"));
                 client.print(F("Connect to FightTimer or other WebSocket timer server</p>"));
                 client.print(F("<div class='form-group'><label>Server Host / IP:</label>"));
-                client.print(F("<input type='text' id='wsHost' placeholder='192.168.1.100' value=''>"));
+                client.print(F("<input type='text' id='wsHost' value='10.0.0.1'>"));
                 client.print(F("</div><div class='form-group'><label>Port:</label>"));
-                client.print(F("<input type='number' id='wsPort' value='8765' min='1' max='65535'>"));
+                client.print(F("<input type='number' id='wsPort' value='8766' min='1' max='65535'>"));
                 client.print(F("</div><div class='form-group'><label>Path:</label>"));
-                client.print(F("<input type='text' id='wsPath' placeholder='/socket.io/' value='/socket.io/'>"));
+                client.print(F("<input type='text' id='wsPath' placeholder='/ws' value='/ws'>"));
                 client.print(F("</div><div style='display:flex;gap:10px'>"));
                 client.print(F("<button class='btn-start' onclick='connectWebSocket()' style='flex:1'>"));
                 client.print(F("🔗 Connect</button>"));
@@ -577,16 +577,17 @@ namespace Comms {
                         int pathEnd = postData.indexOf('&', pathStart);
                         if (pathEnd < 0) pathEnd = postData.length();
                         path = postData.substring(pathStart + 5, pathEnd);
-                        path.replace("%2F", "/");  // URL decode /
-                        path.replace("%3F", "?");  // URL decode ?
-                        path.replace("%3D", "=");  // URL decode =
-                        path.replace("%26", "&");  // URL decode &
+                        path = urlDecode(path);  // Properly decode all URL encoded characters
                         path.trim();
                     }
                     
                     if (host.length() == 0) {
                         sendHTTPResponse(client, 400, "application/json", 
                             "{\"status\":\"error\",\"message\":\"Host parameter required\"}");
+                    } else if (host == "127.0.0.1" || host == "localhost") {
+                        // Reject localhost - it refers to the RP2040 itself, not the user's computer
+                        sendHTTPResponse(client, 400, "application/json", 
+                            "{\"status\":\"error\",\"message\":\"Cannot use 127.0.0.1 or localhost. Use your computer's actual IP address (e.g., 192.168.1.100). Find it using 'ipconfig' (Windows) or 'ifconfig' (Mac/Linux).\"}");
                     } else {
                         Serial.print("Connecting to WebSocket: ");
                         Serial.print(host);
