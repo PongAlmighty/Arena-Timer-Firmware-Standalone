@@ -7,6 +7,9 @@
 #include <Ethernet.h>
 #include <TimerDisplay.h>
 
+// Forward declaration
+class WebSocketClient;
+
 namespace Comms
 {
     // Pin definitions for W5500
@@ -36,6 +39,10 @@ namespace Comms
     /// @brief Handle incoming client connections (call in loop)
     /// @param timerDisplay Reference to the TimerDisplay object to control
     void handleClient(TimerDisplay& timerDisplay);
+
+    /// @brief Set the WebSocket client instance for API access
+    /// @param wsClient Pointer to WebSocketClient instance
+    void setWebSocketClient(WebSocketClient* wsClient);
 
     /// @brief Get the current Ethernet server
     EthernetServer& getServer();

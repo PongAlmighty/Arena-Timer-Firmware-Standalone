@@ -92,6 +92,45 @@ The web interface provides complete control over the timer:
 - **Paused** - Timer stopped mid-countdown (slow blink, 1 second intervals)
 - **Expired** - Timer reached zero (rapid flash, 500ms intervals)
 
+### WebSocket Connection
+
+Connect your timer to a WebSocket server (such as [FightTimer](https://github.com/PongAlmighty/FightTimer)) for synchronized livestream control:
+
+1. **Enter Server Details**:
+   - **Host**: IP address or hostname of WebSocket server
+   - **Port**: Server port (default: 8765 for FightTimer)
+   - **Path**: WebSocket endpoint path (default: `/socket.io/`)
+
+2. **Connect**: Click "Connect" to establish connection
+
+3. **Monitor Status**: Connection status displayed in UI with current server URL
+
+4. **Persistent Connection**: WebSocket connection remains active even after closing the web interface
+
+The timer will automatically respond to timer events from the server:
+- **Start** - Begin countdown with specified duration
+- **Stop** - Pause the timer
+- **Reset** - Reset timer to new duration
+- **Settings** - Update timer configuration
+
+#### FightTimer Integration
+
+This firmware is designed to work with [FightTimer](https://github.com/PongAlmighty/FightTimer), a combat robotics livestream timer system. When connected, your physical arena timer will stay in perfect sync with the on-screen overlay timer.
+
+**Supported Message Formats**:
+```json
+// Direct action format
+{"action": "start"}
+
+// Timer update format
+{"timer_update": {"action": "start", "minutes": 3, "seconds": 0}}
+
+// Socket.IO array format
+["timer_update", {"action": "reset", "minutes": 3, "seconds": 0}]
+```
+
+**Connection remains active** after closing the web UI, allowing the timer to continue responding to livestream control events.
+
 ## Display Formats
 
 The timer automatically switches formats based on remaining time:
@@ -173,6 +212,11 @@ The web interface uses a simple REST API:
 **GET** `/` - Serve web interface HTML  
 **GET** `/api?action=<start|stop|reset>&minutes=<M>&seconds=<S>&milliseconds=<MS>&color=<HEX>&font=<0-4>&size=<1-3>`
 
+**WebSocket Control**:
+- **GET** `/api/websocket/status` - Get connection status and current server URL
+- **POST** `/api/websocket/connect` - Connect to WebSocket server (body: `host=<HOST>&port=<PORT>&path=<PATH>`)
+- **POST** `/api/websocket/disconnect` - Disconnect from WebSocket server
+
 Example:
 ```
 http://arenatimer.local/api?action=start&minutes=5&seconds=30&color=FF0000&font=2&size=2
@@ -188,6 +232,8 @@ Built using:
 - [Adafruit Protomatter](https://github.com/adafruit/Adafruit_Protomatter) - RGB matrix driver
 - [Arduino Ethernet Library](https://github.com/arduino-libraries/Ethernet) - W5500 support
 - [EthernetBonjour](https://github.com/TrippyLighting/EthernetBonjour) - mDNS/hostname resolution
+- [WebSockets Library](https://github.com/Links2004/arduinoWebSockets) - WebSocket client for RP2040
+- [ArduinoJson](https://arduinojson.org/) - JSON parsing for WebSocket messages
 
 ---
 

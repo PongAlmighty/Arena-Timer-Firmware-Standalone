@@ -2,6 +2,7 @@
 #include <RGBMatrix.h>
 #include <TimerDisplay.h>
 #include <Comms.h>
+#include <WebSocketClient.h>
 
 // Include various fonts (12pt and below for 64x32 display)
 #include <Fonts/FreeMono9pt7b.h>
@@ -21,9 +22,9 @@
 #include <Fonts/Picopixel.h>
 #include <Fonts/TomThumb.h>
 // Custom fonts
-#include <Aquire_BW0ox12pt7b.h>
-#include <AquireBold_8Ma6012pt7b.h>
-#include <AquireLight_YzE0o12pt7b.h>
+#include <CustomFonts/Aquire_BW0ox12pt7b.h>
+#include <CustomFonts/AquireBold_8Ma6012pt7b.h>
+#include <CustomFonts/AquireLight_YzE0o12pt7b.h>
 
 // Network configuration// Network configuration
 uint8_t mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
@@ -32,6 +33,9 @@ const char* hostname = "arenatimer";     // Access via http://arenatimer.local
 
 // Create timer display in TIMER mode (countdown)
 TimerDisplay timerDisplay(RGBMatrix::getMatrix(), TimerDisplay::Mode::TIMER);
+
+// Create WebSocket client for FightTimer integration
+WebSocketClient* wsClient = nullptr;
 
 void setup()
 {
@@ -117,6 +121,14 @@ void setup()
   timerDisplay.getTimer().setDuration({3, 0, 0});  // 3 minutes default
   timerDisplay.getTimer().reset();
   
+  // Initialize WebSocket client
+  Serial.println("Initializing WebSocket client...");
+  wsClient = new WebSocketClient(&timerDisplay.getTimer());
+  Serial.println("WebSocket client ready (not connected)");
+  
+  // Pass WebSocket client to Comms for API access
+  Comms::setWebSocketClient(wsClient);
+  
   Serial.println("\n=== Setup Complete ===");
   if (ethernet_ok)
   {
@@ -134,6 +146,11 @@ void loop()
 {
   // Handle incoming web requests (includes mDNS update)
   Comms::handleClient(timerDisplay);
+  
+  // Poll WebSocket client for messages
+  if (wsClient) {
+    wsClient->poll();
+  }
   
   // Clear the display
   RGBMatrix::clear();

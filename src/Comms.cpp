@@ -1,4 +1,5 @@
 #include "Comms.h"
+#include "WebSocketClient.h"
 #include <SPI.h>
 #include <EthernetBonjour.h>
 
@@ -20,9 +21,9 @@
 #include <Fonts/Picopixel.h>
 #include <Fonts/TomThumb.h>
 // Custom fonts
-#include <Aquire_BW0ox12pt7b.h>
-#include <AquireBold_8Ma6012pt7b.h>
-#include <AquireLight_YzE0o12pt7b.h>
+#include <CustomFonts/Aquire_BW0ox12pt7b.h>
+#include <CustomFonts/AquireBold_8Ma6012pt7b.h>
+#include <CustomFonts/AquireLight_YzE0o12pt7b.h>
 
 namespace Comms {
     // Pin definitions for W5500
@@ -33,6 +34,7 @@ namespace Comms {
 
     EthernetServer* server = nullptr;
     bool mdns_initialized = false;
+    WebSocketClient* wsClient = nullptr;
 
     bool init(uint8_t mac[6], uint8_t ip[4]) {
         // Configure SPI pins for W5500
@@ -107,6 +109,11 @@ namespace Comms {
 
     EthernetServer& getServer() {
         return *server;
+    }
+
+    void setWebSocketClient(WebSocketClient* client) {
+        wsClient = client;
+        Serial.println("WebSocket client registered with Comms");
     }
 
     // Helper function to send HTTP response
@@ -263,10 +270,13 @@ namespace Comms {
                 client.print(F("<title>Arena Timer Control</title><style>"));
                 client.print(F("body{font-family:Arial,sans-serif;margin:0;padding:20px;"));
                 client.print(F("background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);"));
-                client.print(F("min-height:100vh;display:flex;justify-content:center;align-items:center}"));
+                client.print(F("min-height:100vh}"));
                 client.print(F(".container{background:white;border-radius:10px;padding:30px;"));
-                client.print(F("box-shadow:0 10px 40px rgba(0,0,0,0.2);max-width:500px;width:100%}"));
+                client.print(F("box-shadow:0 10px 40px rgba(0,0,0,0.2);max-width:1400px;margin:0 auto}"));
                 client.print(F("h1{text-align:center;color:#333;margin-bottom:30px}"));
+                client.print(F(".grid-container{display:grid;grid-template-columns:repeat(3,1fr);"));
+                client.print(F("gap:20px;margin-top:20px}"));
+                client.print(F("@media (max-width:1200px){.grid-container{grid-template-columns:1fr}}"));
                 client.print(F(".section{margin-bottom:25px;padding:20px;background:#f5f5f5;"));
                 client.print(F("border-radius:8px}.section h2{margin-top:0;color:#667eea;font-size:18px}"));
                 client.print(F(".controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:15px}"));
@@ -284,7 +294,7 @@ namespace Comms {
                 client.print(F("border:2px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box}"));
                 client.print(F("input[type='number']:focus,input[type='color']:focus,select:focus{"));
                 client.print(F("border-color:#667eea;outline:none}"));
-                client.print(F("input[type='color']{height:45px;cursor:pointer;border-radius:6px}"));
+                client.print(F("input[type='color']{height:45px;cursor:pointer;border-radius:6px;min-width:60px}"));
                 client.print(F(".threshold-list{margin-bottom:15px}"));
                 client.print(F(".threshold-item{display:flex;align-items:center;gap:10px;"));
                 client.print(F("margin-bottom:10px;padding:12px;background:white;border-radius:8px;"));
@@ -320,11 +330,25 @@ namespace Comms {
                 client.print(F(".status.error{background:#f8d7da;color:#721c24}"));
                 client.print(F("</style></head><body><div class='container'>"));
                 client.print(F("<h1>⏱️ Arena Timer Control</h1>"));
-                client.print(F("<div class='section'><h2>Timer Controls</h2><div class='controls'>"));
+                client.print(F("<div class='grid-container'>"));
+                
+                // Column 1: Timer Controls & Duration
+                client.print(F("<div class='grid-column'>"));
+                client.print(F("<div class='section'><h2>🎮 Timer Controls</h2><div class='controls'>"));
                 client.print(F("<button id='startBtn' class='btn-start' onclick='sendCommand(\"start\")'>▶️ Start</button>"));
                 client.print(F("<button class='btn-pause' onclick='sendCommand(\"pause\")'>⏸️ Pause</button>"));
                 client.print(F("<button class='btn-reset' onclick='sendCommand(\"reset\")'>🔄 Reset</button>"));
                 client.print(F("</div></div>"));
+                client.print(F("<div class='section'><h2>⏲️ Timer Duration</h2>"));
+                client.print(F("<div class='duration-inputs'>"));
+                client.print(F("<input type='number' id='durationMin' value='3' min='0' max='60'>"));
+                client.print(F("<span>min</span>"));
+                client.print(F("<input type='number' id='durationSec' value='0' min='0' max='59'>"));
+                client.print(F("<span>sec</span></div></div>"));
+                client.print(F("</div>"));  // End column 1
+                
+                // Column 2: Color Thresholds & Font Selection
+                client.print(F("<div class='grid-column'>"));
                 client.print(F("<div class='section'><h2>⏱️ Color Thresholds</h2>"));
                 client.print(F("<p style='font-size:13px;color:#666;margin-bottom:20px'>"));
                 client.print(F("The timer automatically changes color as time runs out</p>"));
@@ -337,16 +361,17 @@ namespace Comms {
                 client.print(F("<span class='arrow'>→</span>"));
                 client.print(F("<input type='color' id='defaultColor' value='#00FF00'>"));
                 client.print(F("</div></div>"));
+                
                 client.print(F("<div class='section'><h2>🔤 Font Selection</h2>"));
                 client.print(F("<div class='duration-card'>"));
                 client.print(F("<label for='fontSelect' style='margin-bottom:10px'>Display Font:</label>"));
                 client.print(F("<select id='fontSelect' style='font-size:16px'>"));
-                client.print(F("<option value='0'>Default (5x7 @ 2x scale)</option>"));
+                client.print(F("<option value='0'>Adafruit Default (5x7 @ 2x scale)</option>"));
                 client.print(F("<optgroup label='Sans-Serif'>"));
                 client.print(F("<option value='1'>Sans 9pt</option>"));
                 client.print(F("<option value='2'>Sans 12pt</option>"));
                 client.print(F("<option value='3'>Sans Bold 9pt</option>"));
-                client.print(F("<option value='4' selected>Sans Bold 12pt</option>"));
+                client.print(F("<option value='4' selected>Sans Bold 12pt (default)</option>"));
                 client.print(F("</optgroup>"));
                 client.print(F("<optgroup label='Monospace'>"));
                 client.print(F("<option value='5'>Mono 9pt</option>"));
@@ -375,17 +400,35 @@ namespace Comms {
                 client.print(F("<div style='display:flex;align-items:center;gap:10px'>"));
                 client.print(F("<input type='range' id='letterSpacing' min='-2' max='5' value='3' style='flex:1'>"));
                 client.print(F("<span id='spacingValue' style='min-width:30px;text-align:center'>3</span>"));
-                client.print(F("</div></div></div>"));
-                client.print(F("<div class='section'><h2>⏲️ Timer Duration</h2>"));
-                client.print(F("<div class='duration-card'>"));
-                client.print(F("<div class='duration-inputs'>"));
-                client.print(F("<input type='number' id='durationMin' value='3' min='0' max='60'>"));
-                client.print(F("<span>min</span>"));
-                client.print(F("<input type='number' id='durationSec' value='0' min='0' max='59'>"));
-                client.print(F("<span>sec</span></div></div>"));
-                client.print(F("<button class='btn-start' onclick='applySettings()' style='margin-top:20px'>"));
+                client.print(F("</div></div></div></div>"));  // End duration-card, Font Selection section, and column 2
+                
+                // Column 3: WebSocket Connection
+                client.print(F("<div class='grid-column'>"));
+                client.print(F("<div class='section'><h2>🔌 WebSocket Connection</h2>"));
+                client.print(F("<p style='font-size:13px;color:#666;margin-bottom:15px'>"));
+                client.print(F("Connect to FightTimer or other WebSocket timer server</p>"));
+                client.print(F("<div class='form-group'><label>Server Host / IP:</label>"));
+                client.print(F("<input type='text' id='wsHost' placeholder='192.168.1.100' value=''>"));
+                client.print(F("</div><div class='form-group'><label>Port:</label>"));
+                client.print(F("<input type='number' id='wsPort' value='8765' min='1' max='65535'>"));
+                client.print(F("</div><div class='form-group'><label>Path:</label>"));
+                client.print(F("<input type='text' id='wsPath' placeholder='/socket.io/' value='/socket.io/'>"));
+                client.print(F("</div><div style='display:flex;gap:10px'>"));
+                client.print(F("<button class='btn-start' onclick='connectWebSocket()' style='flex:1'>"));
+                client.print(F("🔗 Connect</button>"));
+                client.print(F("<button class='btn-reset' onclick='disconnectWebSocket()' style='flex:1'>"));
+                client.print(F("❌ Disconnect</button></div>"));
+                client.print(F("<div id='wsStatus' style='margin-top:15px;padding:10px;background:white;"));
+                client.print(F("border-radius:6px;font-size:14px;text-align:center'>"));
+                client.print(F("<span style='color:#888'>Not connected</span></div>"));
+                client.print(F("</div></div>"));  // End column 3
+                
+                client.print(F("</div>"));  // End grid-container
+                
+                client.print(F("<button class='btn-start' onclick='applySettings()' style='margin-top:20px;width:100%'>"));
                 client.print(F("✓ Apply All Settings</button>"));
-                client.print(F("</div><div id='status' class='status'></div></div>"));
+                
+                client.print(F("<div id='status' class='status'></div></div>"));  // End container
                 client.print(F("<script>"));
                 client.print(F("let thresholds=[];"));
                 client.print(F("function showStatus(message,isSuccess){"));
@@ -456,10 +499,124 @@ namespace Comms {
                 client.print(F(".catch(()=>showStatus('Error applying settings',false))}"));
                 client.print(F("document.getElementById('letterSpacing').addEventListener('input',function(){"));
                 client.print(F("document.getElementById('spacingValue').textContent=this.value;});"));
+                
+                // WebSocket functions
+                client.print(F("function updateWebSocketStatus(){"));
+                client.print(F("fetch('/api/websocket/status').then(r=>r.json()).then(data=>{"));
+                client.print(F("const wsStatus=document.getElementById('wsStatus');"));
+                client.print(F("if(data.connected){"));
+                client.print(F("wsStatus.innerHTML='<span style=\"color:#4CAF50\">✅ Connected to '+data.url+'</span>';}"));
+                client.print(F("else{wsStatus.innerHTML='<span style=\"color:#888\">'+data.status+'</span>';}"));
+                client.print(F("}).catch(()=>{});}"));
+                client.print(F("function connectWebSocket(){"));
+                client.print(F("const host=document.getElementById('wsHost').value;"));
+                client.print(F("const port=document.getElementById('wsPort').value;"));
+                client.print(F("const path=document.getElementById('wsPath').value;"));
+                client.print(F("if(!host){showStatus('Please enter a host',false);return;}"));
+                client.print(F("const params=new URLSearchParams({host:host,port:port,path:path});"));
+                client.print(F("fetch('/api/websocket/connect',{method:'POST',body:params})"));
+                client.print(F(".then(r=>r.json()).then(data=>{"));
+                client.print(F("showStatus(data.message,data.status==='success');"));
+                client.print(F("setTimeout(updateWebSocketStatus,1000);"));
+                client.print(F("}).catch(()=>showStatus('Connection failed',false));}"));
+                client.print(F("function disconnectWebSocket(){"));
+                client.print(F("fetch('/api/websocket/disconnect',{method:'POST'})"));
+                client.print(F(".then(r=>r.json()).then(data=>{"));
+                client.print(F("showStatus(data.message,data.status==='success');"));
+                client.print(F("setTimeout(updateWebSocketStatus,1000);"));
+                client.print(F("}).catch(()=>showStatus('Disconnect failed',false));}"));
+                
                 client.print(F("setInterval(updateButtonState,2000);updateButtonState();loadThresholds();"));
+                client.print(F("setInterval(updateWebSocketStatus,3000);updateWebSocketStatus();"));
                 client.print(F("</script></body></html>"));
                 
                 Serial.println("Web page sent");
+            } else if (requestPath == "/api/websocket/status") {
+                // Return WebSocket connection status
+                String status = "{\"connected\":";
+                status += (wsClient && wsClient->isConnected()) ? "true" : "false";
+                status += ",\"status\":\"";
+                status += wsClient ? wsClient->getStatus() : "Not initialized";
+                status += "\",\"url\":\"";
+                status += wsClient ? wsClient->getServerUrl() : "";
+                status += "\"}";
+                sendHTTPResponse(client, 200, "application/json", status);
+                
+            } else if (requestPath == "/api/websocket/connect" && isPost) {
+                // Connect to WebSocket server
+                // Expected format: host=192.168.1.100&port=8765&path=/socket.io/
+                
+                if (!wsClient) {
+                    sendHTTPResponse(client, 500, "application/json", 
+                        "{\"status\":\"error\",\"message\":\"WebSocket client not initialized\"}");
+                } else {
+                    String host = "";
+                    uint16_t port = 8765;
+                    String path = "/socket.io/";
+                    
+                    // Parse host
+                    int hostStart = postData.indexOf("host=");
+                    if (hostStart >= 0) {
+                        int hostEnd = postData.indexOf('&', hostStart);
+                        if (hostEnd < 0) hostEnd = postData.length();
+                        host = postData.substring(hostStart + 5, hostEnd);
+                        host.trim();
+                    }
+                    
+                    // Parse port
+                    int portStart = postData.indexOf("port=");
+                    if (portStart >= 0) {
+                        int portEnd = postData.indexOf('&', portStart);
+                        if (portEnd < 0) portEnd = postData.length();
+                        port = postData.substring(portStart + 5, portEnd).toInt();
+                    }
+                    
+                    // Parse path
+                    int pathStart = postData.indexOf("path=");
+                    if (pathStart >= 0) {
+                        int pathEnd = postData.indexOf('&', pathStart);
+                        if (pathEnd < 0) pathEnd = postData.length();
+                        path = postData.substring(pathStart + 5, pathEnd);
+                        path.replace("%2F", "/");  // URL decode /
+                        path.replace("%3F", "?");  // URL decode ?
+                        path.replace("%3D", "=");  // URL decode =
+                        path.replace("%26", "&");  // URL decode &
+                        path.trim();
+                    }
+                    
+                    if (host.length() == 0) {
+                        sendHTTPResponse(client, 400, "application/json", 
+                            "{\"status\":\"error\",\"message\":\"Host parameter required\"}");
+                    } else {
+                        Serial.print("Connecting to WebSocket: ");
+                        Serial.print(host);
+                        Serial.print(":");
+                        Serial.print(port);
+                        Serial.println(path);
+                        
+                        bool connected = wsClient->connect(host.c_str(), port, path.c_str());
+                        
+                        if (connected) {
+                            sendHTTPResponse(client, 200, "application/json", 
+                                "{\"status\":\"success\",\"message\":\"Connected to WebSocket server\"}");
+                        } else {
+                            sendHTTPResponse(client, 500, "application/json", 
+                                "{\"status\":\"error\",\"message\":\"Failed to connect to WebSocket server\"}");
+                        }
+                    }
+                }
+                
+            } else if (requestPath == "/api/websocket/disconnect" && isPost) {
+                // Disconnect from WebSocket server
+                if (!wsClient) {
+                    sendHTTPResponse(client, 500, "application/json", 
+                        "{\"status\":\"error\",\"message\":\"WebSocket client not initialized\"}");
+                } else {
+                    wsClient->disconnect();
+                    sendHTTPResponse(client, 200, "application/json", 
+                        "{\"status\":\"success\",\"message\":\"Disconnected from WebSocket server\"}");
+                }
+                
             } else if (requestPath == "/api/status") {
                 // Return current timer status as JSON (silent - polled frequently)
                 String status = "{\"isPaused\":";
