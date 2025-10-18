@@ -1,4 +1,0 @@
-# Python dependencies for Arena Timer Controller
-python-socketio[client]>=5.0.0
-requests>=2.25.0
-aiohttp>=3.13.0

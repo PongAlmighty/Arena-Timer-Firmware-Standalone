@@ -148,7 +148,7 @@ void TimerDisplay::drawTimeWithCenteredColon(const String &time_str, int16_t bas
     // Decimal should be bottom-aligned with digits (no offset)
     int16_t sep_offset = 0;
     if (!show_ms) {  // If it's a colon (not showing milliseconds)
-        sep_offset = (digit_y1 + digit_height / 2) - (separator_y1 + separator_height / 2);
+        sep_offset = (digit_y1 + digit_height / 2) - (separator_y1 + separator_height / 2) + 1;
     }
     
     // Draw the parts using cursor advancement for proper spacing

@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <RGBMatrix.h>
 #include <TimerDisplay.h>
-#include <Comms.h>
+#include <WebServer.h>
 #include <WebSocketClient.h>
 
 // Debug flag - set to false to disable debug messages for better timing
@@ -38,7 +38,7 @@
 #include <CustomFonts/AquireBold_8Ma6012pt7b.h>
 #include <CustomFonts/AquireLight_YzE0o12pt7b.h>
 
-// Network configuration// Network configuration
+// Network configuration
 uint8_t mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 uint8_t static_ip[] = {10, 0, 0, 21};  // Static IP address
 const char* hostname = "arenatimer";     // Access via http://arenatimer.local
@@ -67,15 +67,15 @@ void setup()
   bool ethernet_ok = false;
   String ip_address;
   
-  if (Comms::init(mac, static_ip))
+  if (WebServer::init(mac, static_ip))
   {
     ethernet_ok = true;
-    ip_address = Comms::getIPAddressString();
+    ip_address = WebServer::getIPAddressString();
     DEBUG_PRINT("IP Address: ");
     DEBUG_PRINTLN(ip_address);
     
     // Initialize mDNS for easy hostname access
-    if (Comms::initMDNS(hostname))
+    if (WebServer::initMDNS(hostname))
     {
       DEBUG_PRINT("Access timer at: http://");
       DEBUG_PRINT(hostname);
@@ -122,7 +122,7 @@ void setup()
     delay(5000);  // Show IP for 5 seconds
     
     // Start web server
-    Comms::startWebServer(80);
+    WebServer::startWebServer(80);
     DEBUG_PRINTLN("Web server started!");
   }
   
@@ -138,8 +138,8 @@ void setup()
   wsClient = new WebSocketClient(&timerDisplay.getTimer());
   DEBUG_PRINTLN("WebSocket client ready (not connected)");
   
-  // Pass WebSocket client to Comms for API access
-  Comms::setWebSocketClient(wsClient);
+  // Pass WebSocket client to WebServer for API access
+  WebServer::setWebSocketClient(wsClient);
   
   DEBUG_PRINTLN("\n=== Setup Complete ===");
   if (ethernet_ok)
@@ -157,7 +157,7 @@ void setup()
 void loop()
 {
   // Handle incoming web requests (includes mDNS update)
-  Comms::handleClient(timerDisplay);
+  WebServer::handleClient(timerDisplay);
   
   // Poll WebSocket client for messages
   if (wsClient) {
@@ -208,7 +208,4 @@ void loop()
     
     last_serial = millis();
   }
-  
-  // Small delay to prevent overwhelming the system
-  // delay(10);
 }

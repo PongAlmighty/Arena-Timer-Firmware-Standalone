@@ -283,20 +283,15 @@ void WebSocketClient::handleTimerUpdate(JsonObject& obj) {
         int minutes = obj["minutes"] | 3;
         int seconds = obj["seconds"] | 0;
         
-        Serial.printf("Resetting timer: %d:%02d\n", minutes, seconds);
+        DEBUG_PRINT("Resetting timer: ");
+        DEBUG_PRINT(minutes);
+        DEBUG_PRINT(":");
+        if (seconds < 10) DEBUG_PRINT("0");
+        DEBUG_PRINTLN(seconds);
         
-        // Check if timer was actively running before reset (not expired)
-        // Only restart if it was running and not expired (FightTimer behavior)
-        bool wasRunning = _timer->isRunning() && !_timer->isPaused() && !_timer->isExpired();
-        
+        // Set duration and reset - timer will stop and not auto-restart
         _timer->setDuration({(unsigned int)minutes, (unsigned int)seconds, 0});
         _timer->reset();
-        
-        // If timer was actively running (not expired), restart it (mimic FightTimer behavior)
-        if (wasRunning) {
-            DEBUG_PRINTLN("Timer was actively running, restarting after reset");
-            _timer->start();
-        }
         
     } else if (strcmp(action, "settings") == 0) {
         // Handle settings update
@@ -305,13 +300,13 @@ void WebSocketClient::handleTimerUpdate(JsonObject& obj) {
         if (!settings.isNull()) {
             // Could update display settings here if needed
             // For now, we'll just log it
-            Serial.println("Settings update received (not applied to physical timer)");
+            DEBUG_PRINTLN("Settings update received (not applied to physical timer)");
             
             // Optionally extract endMessage or other relevant settings
             if (settings["endMessage"].is<const char*>()) {
                 const char* endMsg = settings["endMessage"];
-                Serial.print("End message: ");
-                Serial.println(endMsg);
+                DEBUG_PRINT("End message: ");
+                DEBUG_PRINTLN(endMsg);
                 // Could call _timer->setEndMessage(endMsg) if that method exists
             }
         }
