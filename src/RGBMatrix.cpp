@@ -2,127 +2,167 @@
  * Source code for interfacing with the WaveShare RGB Matrix Panel
  */
 
-#include <RGBMatrix.h>
 #include <Adafruit_Protomatter.h>
 #include <Arduino.h>
+#include <RGBMatrix.h>
 
-namespace RGBMatrix
-{
-    // Waveshare RGB-Matrix-P5-64x32 pin connections
+namespace RGBMatrix {
+// Pin definitions for Silicognition PoE-FeatherWing on RP2040-Shim
+// Pin definitions for Silicognition PoE-FeatherWing on RP2040-Shim
+// Using Feather Pin Names mapped to Pico GPIOs
+const int PIN_SDA = 2;  // R1 -> SDA (IO2)
+const int PIN_SCL = 3;  // G1 -> SCL (IO3)
+const int PIN_D11 = 11; // B1 -> D11 (IO11)
 
-    static constexpr int A = 7;
-    static constexpr int B = 10;
-    static constexpr int C = 8;
-    static constexpr int D = 11;
+const int PIN_D4 = 6;   // R2 -> D4 (IO6)
+const int PIN_D10 = 21; // G2 -> D10 (IO21)
+const int PIN_D25 = 25; // B2 -> D25 (IO25)
 
-    static constexpr int R1 = 14;
-    static constexpr int G1 = 28;
-    static constexpr int B1 = 15;
-    static constexpr int R2 = 5;
-    static constexpr int G2 = 29;
-    static constexpr int B2 = 6;
+const int PIN_D13 = 22; // CLK -> D13 (IO22)
+const int PIN_TX = 0;   // LAT -> TX  (IO0)
+const int PIN_RX = 1;   // OE  -> RX  (IO1)
 
-    static constexpr int CLK = 26;
-    static constexpr int LAT = 12;
-    static constexpr int OE = 27;
+const int PIN_A0 = 29; // A   -> A0 (IO29)
+const int PIN_A1 = 28; // B   -> A1 (IO28)
+const int PIN_A2 = 27; // C   -> A2 (IO27)
+const int PIN_A3 = 26; // D   -> A3 (IO26)
 
-    uint8_t rgbPins[] = {R1, G1, B1, R2, G2, B2};
-    uint8_t addrPins[] = {A, B, C, D};
+const int PIN_D24 = 24; // CS  -> D24 (IO24) - Ethernet CS
 
-    Adafruit_Protomatter matrix(
-        64,       // matrix chain width
-        6,        // bitDepth
-        1,        // rgbCount
-        rgbPins,  // rgbList
-        4,        // addrCount
-        addrPins, // addrList
-        CLK,      // clockPin
-        LAT,      // latchPin
-        OE,       // oePin
-        true      // doubleBuffer
-    );
+// Map Protomatter pins to the Feather definitions
+const int CS = PIN_D24;
 
-    void init()
-    {
-        // Initialization code for the RGB matrix
-        // Initialize matrix...
-        ProtomatterStatus status = matrix.begin();
-        Serial.print("Protomatter begin() status: ");
-        Serial.println((int)status);
-        if (status != PROTOMATTER_OK)
-        {
-            for (;;)
-                ;
-        }
-    }
+static constexpr int A = PIN_A0;
+static constexpr int B = PIN_A1;
+static constexpr int C = PIN_A2;
+static constexpr int D = PIN_A3;
 
-    void demo()
-    {
-        // Demo code for the RGB matrix
-        // Make four color bars (red, green, blue, white) with brightness ramp:
-        for (int x = 0; x < matrix.width(); x++)
-        {
-            uint8_t level = x * 256 / matrix.width(); // 0-255 brightness
-            matrix.drawPixel(x, matrix.height() - 4, matrix.color565(level, 0, 0));
-            matrix.drawPixel(x, matrix.height() - 3, matrix.color565(0, level, 0));
-            matrix.drawPixel(x, matrix.height() - 2, matrix.color565(0, 0, level));
-            matrix.drawPixel(x, matrix.height() - 1, matrix.color565(level, level, level));
-        }
+static constexpr int R1 = PIN_SDA;
+static constexpr int G1 = PIN_SCL;
+static constexpr int B1 = PIN_D11;
 
-        // Simple shapes and text, showing GFX library calls:
-        matrix.drawCircle(12, 10, 9, matrix.color565(255, 0, 0));               // Red
-        matrix.drawRect(14, 6, 17, 17, matrix.color565(0, 255, 0));             // Green
-        matrix.drawTriangle(32, 9, 41, 27, 23, 27, matrix.color565(0, 0, 255)); // Blue
+static constexpr int R2 = PIN_D4;
+static constexpr int G2 = PIN_D10;
+static constexpr int B2 = PIN_D25;
 
-        const char *text = "3:00";
-        int16_t x1, y1;
-        uint16_t w, h;
-        matrix.getTextBounds((char *)text, 0, 0, &x1, &y1, &w, &h);
+static constexpr int CLK = PIN_D13;
+static constexpr int LAT = PIN_TX;
+static constexpr int OE = PIN_RX;
 
-        // Compute centered position
-        int16_t cx = (matrix.width() - w) / 2;
-        int16_t cy = (matrix.height() - h) / 2;
+uint8_t rgbPins[] = {R1, G1, B1, R2, G2, B2};
+uint8_t addrPins[] = {A, B, C, D};
 
-        matrix.setCursor(cx, cy); // top-left corner (in rotated space)
-        matrix.println(text); // Default text color is white
+Adafruit_Protomatter matrix(64,       // matrix chain width
+                            6,        // bitDepth
+                            1,        // rgbCount
+                            rgbPins,  // rgbList
+                            4,        // addrCount
+                            addrPins, // addrList
+                            CLK,      // clockPin
+                            LAT,      // latchPin
+                            OE,       // oePin
+                            true      // doubleBuffer
+);
 
-        // AFTER DRAWING, A show() CALL IS REQUIRED TO UPDATE THE MATRIX!
-
-        matrix.show(); // Copy data to matrix buffers
-    }
-
-    // simple wrapper function to set display rotation based on degrees
-    void setOrientation(int orientation)
-    {
-        switch (orientation)
-        {
-        case 0:
-            matrix.setRotation(0);
-            break;
-        case 90:
-            matrix.setRotation(1);
-            break;
-        case 180:
-            matrix.setRotation(2);
-            break;
-        case 270:
-            matrix.setRotation(3);
-            break;
-        }
-    }
-
-    void clear()
-    {
-        matrix.fillScreen(0);
-    }
-
-    void show()
-    {
-        matrix.show();
-    }
-
-    Adafruit_Protomatter& getMatrix()
-    {
-        return matrix;
-    }
+void init() {
+  // Initialization code for the RGB matrix
+  // Initialize matrix...
+  ProtomatterStatus status = matrix.begin();
+  Serial.print("Protomatter begin() status: ");
+  Serial.println((int)status);
+  if (status != PROTOMATTER_OK) {
+    Serial.println("ERROR: Matrix initialization failed!");
+    return;
+  }
 }
+
+void demo() {
+  // Demo code for the RGB matrix
+  // Make four color bars (red, green, blue, white) with brightness ramp:
+  for (int x = 0; x < matrix.width(); x++) {
+    uint8_t level = x * 256 / matrix.width(); // 0-255 brightness
+    matrix.drawPixel(x, matrix.height() - 4, matrix.color565(level, 0, 0));
+    matrix.drawPixel(x, matrix.height() - 3, matrix.color565(0, level, 0));
+    matrix.drawPixel(x, matrix.height() - 2, matrix.color565(0, 0, level));
+    matrix.drawPixel(x, matrix.height() - 1,
+                     matrix.color565(level, level, level));
+  }
+
+  // Simple shapes and text, showing GFX library calls:
+  matrix.drawCircle(12, 10, 9, matrix.color565(255, 0, 0));   // Red
+  matrix.drawRect(14, 6, 17, 17, matrix.color565(0, 255, 0)); // Green
+  matrix.drawTriangle(32, 9, 41, 27, 23, 27,
+                      matrix.color565(0, 0, 255)); // Blue
+
+  const char *text = "3:00";
+  int16_t x1, y1;
+  uint16_t w, h;
+  matrix.getTextBounds((char *)text, 0, 0, &x1, &y1, &w, &h);
+
+  // Compute centered position
+  int16_t cx = (matrix.width() - w) / 2;
+  int16_t cy = (matrix.height() - h) / 2;
+
+  matrix.setCursor(cx, cy); // top-left corner (in rotated space)
+  matrix.println(text);     // Default text color is white
+
+  // AFTER DRAWING, A show() CALL IS REQUIRED TO UPDATE THE MATRIX!
+
+  matrix.show(); // Copy data to matrix buffers
+}
+
+// simple wrapper function to set display rotation based on degrees
+void setOrientation(int orientation) {
+  switch (orientation) {
+  case 0:
+    matrix.setRotation(0);
+    break;
+  case 90:
+    matrix.setRotation(1);
+    break;
+  case 180:
+    matrix.setRotation(2);
+    break;
+  case 270:
+    matrix.setRotation(3);
+    break;
+  }
+}
+
+void clear() { matrix.fillScreen(0); }
+
+void show() { matrix.show(); }
+
+Adafruit_Protomatter &getMatrix() { return matrix; }
+
+void minimalTest() {
+  static uint8_t color_index = 0;
+  static unsigned long last_change = 0;
+
+  // Change color every 500ms
+  if (millis() - last_change > 500) {
+    last_change = millis();
+    color_index = (color_index + 1) % 4;
+  }
+
+  // Fill entire screen with bright colors
+  uint16_t color;
+  switch (color_index) {
+  case 0:
+    color = matrix.color565(255, 0, 0);
+    break; // Bright RED
+  case 1:
+    color = matrix.color565(0, 255, 0);
+    break; // Bright GREEN
+  case 2:
+    color = matrix.color565(0, 0, 255);
+    break; // Bright BLUE
+  case 3:
+    color = matrix.color565(255, 255, 255);
+    break; // WHITE
+  }
+
+  matrix.fillScreen(color);
+  matrix.show();
+}
+} // namespace RGBMatrix
