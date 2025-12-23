@@ -8,19 +8,20 @@
 
 namespace RGBMatrix {
 // Pin definitions for Silicognition PoE-FeatherWing on RP2040-Shim
-// Pin definitions for Silicognition PoE-FeatherWing on RP2040-Shim
-// Using Feather Pin Names mapped to Pico GPIOs
-const int PIN_SDA = 2;  // R1 -> SDA (IO2)
-const int PIN_SCL = 3;  // G1 -> SCL (IO3)
-const int PIN_D11 = 11; // B1 -> D11 (IO11)
+// CORRECTED: Using actual Shim GPIO numbers matching user's current wiring
+const int PIN_SDA = 16; // R1 -> SDA (IO16) - User confirmed wiring
+const int PIN_SCL = 17; // G1 -> SCL (IO17) - User confirmed wiring
+const int PIN_D9 = 20;  // B1 -> D9  (IO20)
 
-const int PIN_D4 = 6;   // R2 -> D4 (IO6)
+const int PIN_D4 = 6;   // R2 -> D4  (IO6)
 const int PIN_D10 = 21; // G2 -> D10 (IO21)
 const int PIN_D25 = 25; // B2 -> D25 (IO25)
 
 const int PIN_D13 = 22; // CLK -> D13 (IO22)
-const int PIN_TX = 0;   // LAT -> TX  (IO0)
-const int PIN_RX = 1;   // OE  -> RX  (IO1)
+const int PIN_D12 =
+    14; // LAT -> D12 (IO14) - MOVED from TX to avoid Serial conflict
+const int PIN_D11 =
+    15; // OE  -> D11 (IO15) - MOVED from RX to avoid Serial conflict
 
 const int PIN_A0 = 29; // A   -> A0 (IO29)
 const int PIN_A1 = 28; // B   -> A1 (IO28)
@@ -39,21 +40,21 @@ static constexpr int D = PIN_A3;
 
 static constexpr int R1 = PIN_SDA;
 static constexpr int G1 = PIN_SCL;
-static constexpr int B1 = PIN_D11;
+static constexpr int B1 = PIN_D9;
 
 static constexpr int R2 = PIN_D4;
 static constexpr int G2 = PIN_D10;
 static constexpr int B2 = PIN_D25;
 
 static constexpr int CLK = PIN_D13;
-static constexpr int LAT = PIN_TX;
-static constexpr int OE = PIN_RX;
+static constexpr int LAT = PIN_D12;
+static constexpr int OE = PIN_D11;
 
 uint8_t rgbPins[] = {R1, G1, B1, R2, G2, B2};
 uint8_t addrPins[] = {A, B, C, D};
 
 Adafruit_Protomatter matrix(64,       // matrix chain width
-                            6,        // bitDepth
+                            1,        // bitDepth - REDUCED TO 1 FOR DIAGNOSIS
                             1,        // rgbCount
                             rgbPins,  // rgbList
                             4,        // addrCount
