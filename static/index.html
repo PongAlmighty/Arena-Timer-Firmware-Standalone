@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Arena Timer Control</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh
+        }
+
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 1400px;
+            margin: 0 auto
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 20px
+        }
+
+        @media (max-width: 1200px) {
+            .grid-container {
+                grid-template-columns: 1fr
+            }
+        }
+
+        .section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px
+        }
+
+        .section h2 {
+            margin-top: 0;
+            color: #667eea;
+            font-size: 18px
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px
+        }
+
+        button {
+            padding: 15px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold
+        }
+
+        .btn-start {
+            background: #4CAF50;
+            color: white;
+            grid-column: 1/-1
+        }
+
+        .btn-start:hover {
+            background: #45a049
+        }
+
+        .btn-pause {
+            background: #FF9800;
+            color: white
+        }
+
+        .btn-pause:hover {
+            background: #e68900
+        }
+
+        .btn-reset {
+            background: #f44336;
+            color: white
+        }
+
+        .btn-reset:hover {
+            background: #da190b
+        }
+
+        .form-group {
+            margin-bottom: 15px
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold
+        }
+
+        input[type='number'],
+        input[type='color'],
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box
+        }
+
+        input[type='number']:focus,
+        input[type='color']:focus,
+        select:focus {
+            border-color: #667eea;
+            outline: none
+        }
+
+        input[type='color'] {
+            height: 45px;
+            cursor: pointer;
+            border-radius: 6px;
+            min-width: 60px
+        }
+
+        .threshold-list {
+            margin-bottom: 15px
+        }
+
+        .threshold-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05)
+        }
+
+        .threshold-item .time-inputs {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            flex: 1;
+            white-space: nowrap
+        }
+
+        .threshold-item .when-label {
+            color: #666;
+            font-weight: 500;
+            white-space: nowrap
+        }
+
+        .threshold-item input[type='number'] {
+            width: 60px;
+            padding: 8px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+            flex-shrink: 0
+        }
+
+        .threshold-item .time-label {
+            font-size: 12px;
+            color: #999;
+            font-weight: normal
+        }
+
+        .threshold-item .arrow {
+            color: #667eea;
+            font-size: 20px;
+            margin: 0 8px
+        }
+
+        .threshold-default {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            margin-bottom: 10px
+        }
+
+        .threshold-default .label {
+            flex: 1;
+            color: #666;
+            font-weight: 500
+        }
+
+        .duration-card {
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            margin-top: 15px
+        }
+
+        .duration-inputs {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: 10px
+        }
+
+        .duration-inputs input {
+            width: 80px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold
+        }
+
+        .duration-inputs span {
+            color: #666;
+            font-size: 14px
+        }
+
+        .btn-remove {
+            background: #ff5252;
+            color: white;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.2s
+        }
+
+        .btn-remove:hover {
+            background: #ff1744
+        }
+
+        .btn-add {
+            background: #4CAF50;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            transition: background 0.2s
+        }
+
+        .btn-add:hover {
+            background: #45a049
+        }
+
+        .console {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            height: 200px;
+            overflow-y: auto;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3)
+        }
+
+        .console-entry {
+            margin-bottom: 8px;
+            line-height: 1.4
+        }
+
+        .console-time {
+            color: #858585;
+            margin-right: 8px
+        }
+
+        .console-success {
+            color: #4CAF50
+        }
+
+        .console-error {
+            color: #f44336
+        }
+
+        .console-info {
+            color: #2196F3
+        }
+
+        .console-warning {
+            color: #FF9800
+        }
+
+        .info-display {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05)
+        }
+
+        .info-label {
+            color: #666;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase
+        }
+
+        .info-value {
+            color: #333;
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 4px;
+            font-family: monospace
+        }
+
+        .apply-button {
+            margin-top: 20px;
+            width: 100%
+        }
+
+        .apply-button.sticky {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            max-width: 90vw;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important
+        }
+
+        .content-with-sticky {
+            padding-bottom: 80px
+        }
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <h1>⏱️ Arena Timer Control</h1>
+        <div class='grid-container'>
+            <div class='grid-column'>
+                <div class='section'>
+                    <h2>🎮 Timer Controls</h2>
+                    <div class='controls'>
+                        <button id='startBtn' class='btn-start' onclick='sendCommand("start")'>▶️ Start</button>
+                        <button class='btn-pause' onclick='sendCommand("pause")'>⏸️ Pause</button>
+                        <button class='btn-reset' onclick='sendCommand("reset")'>🔄 Reset</button>
+                        <button class='btn-pause' onclick='toggleOrientation()' style='grid-column:1/-1'>🔄 Flip Display</button>
+                    </div>
+                </div>
+                <div class='section'>
+                    <h2>⏲️ Timer Duration</h2>
+                    <div class='duration-inputs'>
+                        <input type='number' id='durationMin' value='3' min='0' max='60'>
+                        <span>min</span>
+                        <input type='number' id='durationSec' value='0' min='0' max='59'>
+                        <span>sec</span>
+                    </div>
+                </div>
+                <div class='section'>
+                    <h2>📝 Console</h2>
+                    <div id='console' class='console'>
+                        <div class='console-entry console-info'>
+                            <span class='console-time'>--:--:--</span>System ready
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class='grid-column'>
+                <div class='section'>
+                    <h2>⏱️ Color Thresholds</h2>
+                    <p style='font-size:13px;color:#666;margin-bottom:20px'>The timer automatically changes color as time runs out</p>
+                    <div id='thresholds' class='threshold-list'></div>
+                    <button class='btn-add' onclick='addThreshold()'>+ Add Threshold</button>
+                    <p style='font-size:13px;color:#666;margin:15px 0 10px 0;font-style:italic'>When no threshold matches:</p>
+                    <div class='threshold-default'>
+                        <span class='label'>Default Color</span>
+                        <span class='arrow'>→</span>
+                        <input type='color' id='defaultColor' value='#00FF00'>
+                    </div>
+                </div>
+                <div class='section'>
+                    <h2>🔤 Font Selection</h2>
+                    <div class='duration-card'>
+                        <label for='fontSelect' style='margin-bottom:10px'>Display Font:</label>
+                        <select id='fontSelect' style='font-size:16px'>
+                            <option value='0'>Adafruit Default (5x7 @ 2x scale)</option>
+                            <optgroup label='Sans-Serif'>
+                                <option value='1'>Sans 9pt</option>
+                                <option value='2'>Sans 12pt</option>
+                                <option value='3'>Sans Bold 9pt</option>
+                                <option value='4' selected>Sans Bold 12pt (default)</option>
+                            </optgroup>
+                            <optgroup label='Monospace'>
+                                <option value='5'>Mono 9pt</option>
+                                <option value='6'>Mono 12pt</option>
+                                <option value='7'>Mono Bold 9pt</option>
+                                <option value='8'>Mono Bold 12pt</option>
+                            </optgroup>
+                            <optgroup label='Serif'>
+                                <option value='9'>Serif 9pt</option>
+                                <option value='10'>Serif 12pt</option>
+                                <option value='11'>Serif Bold 9pt</option>
+                                <option value='12'>Serif Bold 12pt</option>
+                            </optgroup>
+                            <optgroup label='Retro/Pixel'>
+                                <option value='13'>Org_01 (Retro @ 3x)</option>
+                                <option value='14'>Picopixel (Tiny @ 3x)</option>
+                                <option value='15'>TomThumb (Pixel @ 3x)</option>
+                            </optgroup>
+                            <optgroup label='Custom Fonts'>
+                                <option value='16'>Aquire (12pt)</option>
+                                <option value='17'>Aquire Bold (12pt)</option>
+                                <option value='18'>Aquire Light (12pt)</option>
+                            </optgroup>
+                        </select>
+                        <label for='letterSpacing' style='margin-top:15px;margin-bottom:5px'>Character Spacing:</label>
+                        <div style='display:flex;align-items:center;gap:10px'>
+                            <input type='range' id='letterSpacing' min='-2' max='5' value='3' style='flex:1'>
+                            <span id='spacingValue' style='min-width:30px;text-align:center'>3</span>
+                        </div>
+                        <label for='brightness' style='margin-top:15px;margin-bottom:5px'>Display Brightness:</label>
+                        <div style='display:flex;align-items:center;gap:10px'>
+                            <input type='range' id='brightness' min='0' max='255' value='255' style='flex:1'>
+                            <span id='brightnessValue' style='min-width:30px;text-align:center'>100%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class='grid-column'>
+                <div class='section'>
+                    <h2>📊 System Status</h2>
+                    <div class='info-display'>
+                        <div class='form-group'>IP Address</div>
+                        <div class='info-value' id='ipAddress'>Loading...</div>
+                    </div>
+                    <div class='info-display'>
+                        <div class='form-group'>FightTimer Connection</div>
+                        <div class='info-value' id='wsStatus'>
+                            <span style='color:#888'>Checking...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class='section'>
+                    <h2>🔗 WebSocket Connection</h2>
+                    <div class='form-group'>
+                        <label>Server Host / IP:</label>
+                        <input type='text' id='wsHost' value='10.0.0.1'>
+                    </div>
+                    <div class='form-group'>
+                        <label>Port:</label>
+                        <input type='number' id='wsPort' value='8765' min='1' max='65535'>
+                    </div>
+                    <div class='form-group'>
+                        <label>Path:</label>
+                        <input type='text' id='wsPath' value='/socket.io/'>
+                    </div>
+                    <div style='display:flex;gap:10px'>
+                        <button class='btn-start' onclick='connectWebSocket()' style='flex:1'>🔗 Connect</button>
+                        <button class='btn-reset' onclick='disconnectWebSocket()' style='flex:1'>❌ Disconnect</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button id='applyButton' class='btn-start apply-button' onclick='applySettings()'>✓ Apply All Settings</button>
+    </div>
+    <script>
+        let thresholds = [];
+        let consoleMessages = [];
+
+        function addConsoleMessage(message, type = 'info') {
+            const now = new Date();
+            const time = now.toLocaleTimeString('en-US', {
+                hour12: false
+            });
+            consoleMessages.push({
+                time: time,
+                message: message,
+                type: type
+            });
+            if (consoleMessages.length > 50) consoleMessages.shift();
+            const console = document.getElementById('console');
+            console.innerHTML = '';
+            consoleMessages.forEach(m => {
+                const entry = document.createElement('div');
+                entry.className = 'console-entry console-' + m.type;
+                entry.innerHTML = '<span class="console-time">' + m.time + '</span>' + m.message;
+                console.appendChild(entry);
+            });
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function updateButtonState() {
+            fetch('/api/status').then(r => r.json()).then(data => {
+                const btn = document.getElementById('startBtn');
+                if (data.isPaused) {
+                    btn.textContent = '▶️ Resume';
+                } else {
+                    btn.textContent = '▶️ Start';
+                }
+            }).catch(err => console.log('Status check failed'));
+        }
+
+        function loadThresholds() {
+            fetch('/api/thresholds').then(r => r.json()).then(data => {
+                thresholds = data.thresholds || [];
+                if (data.defaultColor) {
+                    document.getElementById('defaultColor').value = data.defaultColor;
+                }
+                renderThresholds();
+            }).catch(err => console.log('Load failed'));
+        }
+
+        function renderThresholds() {
+            const container = document.getElementById('thresholds');
+            container.innerHTML = '';
+            thresholds.forEach((t, i) => {
+                const div = document.createElement('div');
+                div.className = 'threshold-item';
+                const mins = Math.floor(t.seconds / 60);
+                const secs = t.seconds % 60;
+                div.innerHTML = `<div class='time-inputs'>
+<span class='when-label'>When ≤</span>
+<input type='number' value='${mins}' min='0' max='60' 
+onchange='updateThreshold(${i},"minutes",this.value)'>
+<span class='time-label'>min</span>
+<input type='number' value='${secs}' min='0' max='59' 
+onchange='updateThreshold(${i},"seconds",this.value)'>
+<span class='time-label'>sec</span></div>
+<span class='arrow'>→</span>
+<input type='color' value='${t.color}' 
+onchange='updateThreshold(${i},"color",this.value)'>
+<button class='btn-remove' onclick='removeThreshold(${i})'>✕</button>`;
+                container.appendChild(div);
+            });
+        }
+
+        function addThreshold() {
+            thresholds.push({
+                seconds: 60,
+                color: '#FFFF00'
+            });
+            renderThresholds();
+        }
+
+        function removeThreshold(i) {
+            thresholds.splice(i, 1);
+            renderThresholds();
+        }
+
+        function updateThreshold(i, field, value) {
+            if (field === 'minutes') {
+                const s = thresholds[i].seconds % 60;
+                thresholds[i].seconds = parseInt(value) * 60 + s;
+            } else if (field === 'seconds') {
+                const m = Math.floor(thresholds[i].seconds / 60);
+                thresholds[i].seconds = m * 60 + parseInt(value);
+            } else if (field === 'color') {
+                thresholds[i].color = value;
+            }
+        }
+
+        function sendCommand(cmd) {
+            fetch('/api', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'action=' + cmd
+            }).then(r => r.text()).then(data => {
+                addConsoleMessage('Command: ' + cmd, data.includes('Error') ? 'error' : 'success');
+                updateButtonState();
+            }).catch(() => addConsoleMessage('Error sending command: ' + cmd, 'error'))
+        }
+
+        function toggleOrientation() {
+            fetch('/api', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'action=flip'
+            }).then(r => r.text()).then(data => {
+                addConsoleMessage('Display flipped', data.includes('Error') ? 'error' : 'success');
+            }).catch(() => addConsoleMessage('Error flipping display', 'error'))
+        }
+
+        function applySettings() {
+            const durationMin = parseInt(document.getElementById('durationMin').value) || 0;
+            const durationSec = parseInt(document.getElementById('durationSec').value) || 0;
+            const duration = durationMin * 60 + durationSec;
+            const defaultColor = document.getElementById('defaultColor').value;
+            const font = document.getElementById('fontSelect').value;
+            const spacing = document.getElementById('letterSpacing').value;
+            const brightness = document.getElementById('brightness').value;
+            let params = 'action=settings&duration=' + duration + '&font=' + font + '&spacing=' + spacing + '&brightness=' + brightness;
+            fetch('/api', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: params
+            }).then(() => {
+                const thresholdData = thresholds.map(t => t.seconds + ':' + t.color).join('|');
+                const thresholdParams = 'thresholds=' + encodeURIComponent(thresholdData) + '&default=' + encodeURIComponent(defaultColor);
+                return fetch('/api/thresholds', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: thresholdParams
+                });
+            }).then(r => r.text()).then(data => addConsoleMessage('Settings applied successfully', 'success')).catch(() => addConsoleMessage('Error applying settings', 'error'))
+        }
+        document.getElementById('letterSpacing').addEventListener('input', function() {
+            document.getElementById('spacingValue').textContent = this.value;
+        });
+        document.getElementById('brightness').addEventListener('input', function() {
+            const percent = Math.round((this.value / 255) * 100);
+            document.getElementById('brightnessValue').textContent = percent + '%';
+        });
+
+        function updateNetworkStatus() {
+            fetch('/api/network/status').then(r => r.json()).then(data => {
+                document.getElementById('ipAddress').textContent = data.ip;
+            }).catch(() => {
+                document.getElementById('ipAddress').textContent = 'Error';
+            });
+        }
+
+        function updateWebSocketStatus() {
+            fetch('/api/websocket/status').then(r => r.json()).then(data => {
+                const wsStatus = document.getElementById('wsStatus');
+                if (data.connected) {
+                    wsStatus.innerHTML = '<span style="color:#4CAF50">✅ Connected to ' + data.url + '</span>';
+                } else {
+                    wsStatus.innerHTML = '<span style="color:#888">⚪ Not connected</span>';
+                }
+            }).catch(() => {});
+        }
+
+        function connectWebSocket() {
+            const host = document.getElementById('wsHost').value;
+            const port = document.getElementById('wsPort').value;
+            const path = document.getElementById('wsPath').value;
+            if (!host) {
+                addConsoleMessage('Please enter a host', 'error');
+                return;
+            }
+            const params = new URLSearchParams({
+                host: host,
+                port: port,
+                path: path
+            });
+            fetch('/api/websocket/connect', {
+                method: 'POST',
+                body: params
+            }).then(r => r.json()).then(data => {
+                addConsoleMessage(data.message, data.status === 'success' ? 'success' : 'error');
+                setTimeout(updateWebSocketStatus, 1000);
+            }).catch(() => addConsoleMessage('Connection failed', 'error'));
+        }
+
+        function disconnectWebSocket() {
+            fetch('/api/websocket/disconnect', {
+                method: 'POST'
+            }).then(r => r.json()).then(data => {
+                addConsoleMessage(data.message, data.status === 'success' ? 'success' : 'error');
+                setTimeout(updateWebSocketStatus, 1000);
+            }).catch(() => addConsoleMessage('Disconnect failed', 'error'));
+        }
+
+        function updateStickyButton() {
+            const button = document.getElementById('applyButton');
+            const container = document.querySelector('.container');
+            container.classList.remove('content-with-sticky');
+            const scrollDiff = document.body.scrollHeight - window.innerHeight;
+            const needsScroll = scrollDiff > 100;
+            if (needsScroll) {
+                button.classList.add('sticky');
+                container.classList.add('content-with-sticky');
+            } else {
+                button.classList.remove('sticky');
+                container.classList.remove('content-with-sticky');
+            }
+        }
+        window.addEventListener('resize', updateStickyButton);
+        window.addEventListener('load', updateStickyButton);
+        setInterval(updateButtonState, 2000);
+        updateButtonState();
+        loadThresholds();
+        setInterval(updateWebSocketStatus, 3000);
+        updateWebSocketStatus();
+        setInterval(updateNetworkStatus, 5000);
+        updateNetworkStatus();
+        addConsoleMessage('Arena Timer Control loaded', 'info');
+    </script>
+</body>
+</html>
