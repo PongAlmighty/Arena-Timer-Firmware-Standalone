@@ -52,12 +52,9 @@ WebSocketClient *wsClient = nullptr;
 int current_orientation = 180; // Track current display orientation
 
 bool init(uint8_t mac[6], uint8_t ip[4]) {
-  // Configure SPI1 pins for W5500 (matching platformio.ini: USING_SPI2=true)
-  // Note: Ethernet_Generic library uses these via the build flags
-  SPI1.setSCK(SCK);
-  SPI1.setTX(MOSI);
-  SPI1.setRX(MISO);
-  SPI1.begin();
+  // SPI/Ethernet config handled by platformio.ini build flags
+  // SCK=10, MOSI=11, MISO=12, SS=21
+  SPI.begin();
 
   // Tell Ethernet library which CS pin to use
   Ethernet.init(CS);
