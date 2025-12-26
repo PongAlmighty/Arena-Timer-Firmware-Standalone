@@ -39,6 +39,20 @@ A professional countdown timer system for competitive arenas, combat sports, and
 - **5V Power Supply** (minimum 2A, 4A recommended for full brightness / more pixels)
   - I used a 5V 20W PoE splitter mounted to the back of the enclosure
 
+### Critical Pin Configuration
+**Important:** This firmware relies on a specific pin mapping to avoid conflicts between the Matrix and Ethernet.
+
+| Component | Function | GPIO Pin |
+|-----------|----------|----------|
+| **Ethernet** | **SCK** | **10** (SPI1) |
+| **Ethernet** | **MOSI** | **11** (SPI1) |
+| **Ethernet** | **MISO** | **12** (SPI1) |
+| **Ethernet** | **CS**   | **21** |
+| Matrix    | R1/G1/B1 | 16, 17, 20 |
+| Matrix    | CLK      | 22 |
+
+*Note: The Ethernet library MUST be configured to use SPI1 (via build flags) to avoid conflicting with the Matrix R1/G1 pins on SPI0.*
+
 ### 3D Enclosure
 3D model files for a custom LED matrix enclosure are available in the `3d-models/` directory:
 - `Timer Assembly v23.step` - STEP format for CAD editing
