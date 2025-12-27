@@ -93,10 +93,20 @@ void setup() {
   wsClient = new WebSocketClient(&timerDisplay.getTimer());
   WebServer::setWebSocketClient(wsClient);
 
+  // 5. Load Persistent Settings
+  Serial.print("Loading saved settings...");
+  if (WebServer::loadSettings(timerDisplay)) {
+    Serial.println("OK");
+  } else {
+    Serial.println("Using defaults");
+    // Default initial setup if no settings exist
+    timerDisplay.getTimer().setDuration(Timer::Components{3, 0, 0});
+    timerDisplay.clearColorThresholds();
+    timerDisplay.addColorThreshold(60, 255, 0, 0);
+    timerDisplay.addColorThreshold(120, 255, 255, 0);
+  }
+
   matrix.fillScreen(0);
-  timerDisplay.getTimer().setDuration(Timer::Components{3, 0, 0});
-  timerDisplay.addColorThreshold(60, 255, 0, 0);
-  timerDisplay.addColorThreshold(120, 255, 255, 0);
 }
 
 // ----------------------------------------------------------------------------

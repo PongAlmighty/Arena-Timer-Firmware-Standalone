@@ -1,7 +1,9 @@
 #include "WebServer.h"
 // #include "RGBMatrix.h"
 #include "WebSocketClient.h"
+#include <ArduinoJson.h>
 #include <EthernetBonjour.h>
+#include <LittleFS.h>
 #include <SPI.h>
 
 // Debug flag - set to false to disable debug messages for better timing
@@ -51,15 +53,45 @@ WebSocketClient *wsClient = nullptr;
 int current_orientation = 180; // Track current display orientation
 
 bool init(uint8_t mac[6], uint8_t ip[4]) {
+  // Initialize LittleFS - format if mount fails (e.g. first boot with 1M quota)
+  if (!LittleFS.begin()) {
+    DEBUG_PRINTLN("LittleFS mount failed, attempting to format...");
+    if (LittleFS.format()) {
+      DEBUG_PRINTLN("LittleFS formatted successfully");
+      if (LittleFS.begin()) {
+        DEBUG_PRINTLN("LittleFS mounted after format");
+      } else {
+        DEBUG_PRINTLN("ERROR: LittleFS mount failed even after format");
+      }
+    } else {
+      DEBUG_PRINTLN("ERROR: LittleFS format failed");
+    }
+  } else {
+    DEBUG_PRINTLN("LittleFS initialized successfully");
+    // Show stats
+    FSInfo info;
+    if (LittleFS.info(info)) {
+      DEBUG_PRINT("FS Total: ");
+      DEBUG_PRINT(info.totalBytes);
+      DEBUG_PRINT(" Used: ");
+      DEBUG_PRINTLN(info.usedBytes);
+    }
+  }
+
   // HARDWARE INIT REMOVED - Handled by main.cpp / platformio.ini
   // No SPI.setSCK etc.
 
   // Try DHCP first, fall back to static IP if DHCP fails
   DEBUG_PRINTLN("Attempting DHCP...");
-  if (Ethernet.begin(mac, 10000) == 0) {
+
+  // Pass &SPI1 because we are using the non-default SPI instance
+  // Note: Ethernet_Generic 2.8.1 supports begin(mac, startTimeout, &SPI) for
+  // DHCP
+  if (Ethernet.begin(mac, &SPI1) == 0) {
     DEBUG_PRINTLN("DHCP failed, using static IP");
-    // DHCP failed, use static IP
-    Ethernet.begin(mac, IPAddress(ip[0], ip[1], ip[2], ip[3]));
+    // Fallback to static IP
+    // For static IP without specific gateway/dns: begin(mac, ip)
+    Ethernet.begin(mac, ip);
   } else {
     DEBUG_PRINTLN("DHCP successful");
   }
@@ -233,6 +265,136 @@ uint8_t getTextSizeForFont(int fontId) {
   return 1;   // All other fonts @ 1x
 }
 
+bool saveSettings(TimerDisplay &timerDisplay) {
+  JsonDocument doc;
+  doc["duration"] = timerDisplay.getTimer().getDurationSeconds();
+  doc["font"] = timerDisplay.getFontId();
+  doc["spacing"] = timerDisplay.getLetterSpacing();
+  doc["brightness"] = timerDisplay.getBrightness();
+
+  JsonArray thresholds = doc["thresholds"].to<JsonArray>();
+  size_t count = 0;
+  const TimerDisplay::ColorThreshold *data =
+      timerDisplay.getColorThresholds(count);
+  if (data != nullptr) {
+    for (size_t i = 0; i < count; i++) {
+      JsonObject t = thresholds.add<JsonObject>();
+      t["seconds"] = data[i].seconds;
+      char colorHex[8];
+      snprintf(colorHex, sizeof(colorHex), "#%02X%02X%02X", data[i].r,
+               data[i].g, data[i].b);
+      t["color"] = String(colorHex); // Robust copy
+    }
+  }
+
+  uint8_t dr, dg, db;
+  timerDisplay.getDefaultColor(dr, dg, db);
+  char defaultHex[8];
+  snprintf(defaultHex, sizeof(defaultHex), "#%02X%02X%02X", dr, dg, db);
+  doc["defaultColor"] = defaultHex;
+
+  File file = LittleFS.open("/settings.json", "w");
+  if (!file) {
+    DEBUG_PRINTLN("ERROR: Failed to open /settings.json for writing");
+    return false;
+  }
+
+  size_t bytes = serializeJson(doc, file);
+  file.close();
+
+  if (bytes == 0) {
+    DEBUG_PRINTLN("ERROR: Failed to write JSON to /settings.json");
+    return false;
+  }
+
+  DEBUG_PRINT("Settings saved to /settings.json (");
+  DEBUG_PRINT(bytes);
+  DEBUG_PRINTLN(" bytes)");
+  return true;
+}
+
+bool loadSettings(TimerDisplay &timerDisplay) {
+  if (!LittleFS.exists("/settings.json")) {
+    DEBUG_PRINTLN("No settings file found");
+    return false;
+  }
+
+  File file = LittleFS.open("/settings.json", "r");
+  if (!file) {
+    DEBUG_PRINTLN("Failed to open settings file for reading");
+    return false;
+  }
+
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, file);
+  file.close();
+
+  if (error) {
+    DEBUG_PRINTLN("Failed to parse settings file");
+    return false;
+  }
+
+  if (!doc["duration"].isNull()) {
+    int duration = doc["duration"];
+    Timer::Components comp;
+    comp.minutes = duration / 60;
+    comp.seconds = duration % 60;
+    comp.milliseconds = 0;
+    timerDisplay.getTimer().setDuration(comp);
+    timerDisplay.getTimer().reset();
+  }
+
+  if (!doc["font"].isNull()) {
+    int fontId = doc["font"];
+    timerDisplay.setFont(getFontById(fontId), fontId);
+    timerDisplay.setTextSize(getTextSizeForFont(fontId));
+  }
+
+  if (!doc["spacing"].isNull()) {
+    timerDisplay.setLetterSpacing(doc["spacing"]);
+  }
+
+  if (!doc["brightness"].isNull()) {
+    timerDisplay.setBrightness(doc["brightness"]);
+  }
+
+  if (!doc["thresholds"].isNull()) {
+    timerDisplay.clearColorThresholds();
+    JsonArray thresholds = doc["thresholds"];
+    int count = 0;
+    for (JsonVariant v : thresholds) {
+      JsonObject t = v.as<JsonObject>();
+      if (!t.isNull()) {
+        unsigned int seconds = t["seconds"];
+        const char *color = t["color"];
+        if (color) {
+          uint8_t r, g, b;
+          parseColor(color, r, g, b);
+          timerDisplay.addColorThreshold(seconds, r, g, b);
+          count++;
+          DEBUG_PRINT("Threshold Loaded: ");
+          DEBUG_PRINT(seconds);
+          DEBUG_PRINT("s -> ");
+          DEBUG_PRINTLN(color);
+        }
+      }
+    }
+    DEBUG_PRINT("Loaded ");
+    DEBUG_PRINT(count);
+    DEBUG_PRINTLN(" thresholds");
+  }
+
+  if (!doc["defaultColor"].isNull()) {
+    uint8_t r, g, b;
+    parseColor(doc["defaultColor"].as<const char *>(), r, g, b);
+    timerDisplay.setDefaultColor(r, g, b);
+    timerDisplay.setColor(r, g, b);
+  }
+
+  DEBUG_PRINTLN("Settings loaded from /settings.json");
+  return true;
+}
+
 void handleClient(TimerDisplay &timerDisplay) {
   // Update mDNS responder to keep hostname resolution alive
   updateMDNS();
@@ -282,7 +444,10 @@ void handleClient(TimerDisplay &timerDisplay) {
               }
             }
             // Check for Content-Length header
-            if (currentLine.startsWith("Content-Length: ")) {
+            // Check for Content-Length header
+            String lineLower = currentLine;
+            lineLower.toLowerCase();
+            if (lineLower.startsWith("content-length: ")) {
               contentLength = currentLine.substring(16).toInt();
             }
             currentLine = "";
@@ -564,12 +729,33 @@ void handleClient(TimerDisplay &timerDisplay) {
       client.print(F("<div class='section'><h2>🔗 WebSocket Connection</h2>"));
       client.print(
           F("<div class='form-group'><label>Server Host / IP:</label>"));
-      client.print(F("<input type='text' id='wsHost' value='10.0.0.1'>"));
+      if (wsClient && wsClient->getHost().length() > 0) {
+        client.print(F("<input type='text' id='wsHost' value='"));
+        client.print(wsClient->getHost());
+        client.print(F("'>"));
+      } else {
+        client.print(
+            F("<input type='text' id='wsHost' value='172.17.17.156'>"));
+      }
+
       client.print(F("</div><div class='form-group'><label>Port:</label>"));
-      client.print(F("<input type='number' id='wsPort' value='8765' min='1' "
-                     "max='65535'>"));
+      if (wsClient && wsClient->getPort() > 0) {
+        client.print(F("<input type='number' id='wsPort' value='"));
+        client.print(wsClient->getPort());
+        client.print(F("' min='1' max='65535'>"));
+      } else {
+        client.print(F("<input type='number' id='wsPort' value='8766' min='1' "
+                       "max='65535'>"));
+      }
+
       client.print(F("</div><div class='form-group'><label>Path:</label>"));
-      client.print(F("<input type='text' id='wsPath' value='/socket.io/'>"));
+      if (wsClient && wsClient->getPath().length() > 0) {
+        client.print(F("<input type='text' id='wsPath' value='"));
+        client.print(wsClient->getPath());
+        client.print(F("'>"));
+      } else {
+        client.print(F("<input type='text' id='wsPath' value='/socket.io/'>"));
+      }
       client.print(F("</div><div style='display:flex;gap:10px'>"));
       client.print(F("<button class='btn-start' onclick='connectWebSocket()' "
                      "style='flex:1'>"));
@@ -614,6 +800,32 @@ void handleClient(TimerDisplay &timerDisplay) {
       client.print(F("if(data.isPaused){btn.textContent='▶️ Resume';}"));
       client.print(F("else{btn.textContent='▶️ Start';}"));
       client.print(F("}).catch(err=>console.log('Status check failed'));}"));
+      client.print(F("function loadSettings(){"));
+      client.print(F("fetch('/api/settings').then(r=>r.json()).then(data=>{"));
+      client.print(F("if(data.duration){"));
+      client.print(F("document.getElementById('durationMin').value=Math.floor("
+                     "data.duration/60);"));
+      client.print(
+          F("document.getElementById('durationSec').value=data.duration%60;"));
+      client.print(F("}"));
+      client.print(F("if(data.fontId!==undefined){"));
+      client.print(
+          F("document.getElementById('fontSelect').value=data.fontId;"));
+      client.print(F("}"));
+      client.print(F("if(data.spacing!==undefined){"));
+      client.print(
+          F("document.getElementById('letterSpacing').value=data.spacing;"));
+      client.print(F(
+          "document.getElementById('spacingValue').textContent=data.spacing;"));
+      client.print(F("}"));
+      client.print(F("if(data.brightness!==undefined){"));
+      client.print(
+          F("document.getElementById('brightness').value=data.brightness;"));
+      client.print(F("const percent=Math.round((data.brightness/255)*100);"));
+      client.print(F("document.getElementById('brightnessValue').textContent="
+                     "percent+'%';"));
+      client.print(F("}"));
+      client.print(F("}).catch(err=>console.log('Load settings failed'));}"));
       client.print(F("function loadThresholds(){"));
       client.print(
           F("fetch('/api/thresholds').then(r=>r.json()).then(data=>{"));
@@ -695,28 +907,22 @@ void handleClient(TimerDisplay &timerDisplay) {
           F("const spacing=document.getElementById('letterSpacing').value;"));
       client.print(
           F("const brightness=document.getElementById('brightness').value;"));
-      client.print(F("let "
-                     "params='action=settings&duration='+duration+'&font='+"
-                     "font+'&spacing='+spacing+'&brightness='+brightness;"));
+      client.print(F("const "
+                     "thresholdData=thresholds.map(t=>t.seconds+':'+t.color)."
+                     "join('|');"));
+      client.print(F("let params='action=settings&duration='+duration"
+                     "+'&font='+font+'&spacing='+spacing+'&brightness='+"
+                     "brightness+'&thresholds='+"
+                     "encodeURIComponent(thresholdData)+'&default='+"
+                     "encodeURIComponent(defaultColor);"));
       client.print(
           F("fetch('/api/"
             "settings',{method:'POST',headers:{'Content-Type':'application/"
             "x-www-form-urlencoded'},"));
-      client.print(F("body:params}).then(()=>{"));
-      client.print(F(
-          "const "
-          "thresholdData=thresholds.map(t=>t.seconds+':'+t.color).join('|');"));
-      client.print(
-          F("const "
-            "thresholdParams='thresholds='+encodeURIComponent(thresholdData)+'&"
-            "default='+encodeURIComponent(defaultColor);"));
-      client.print(F("return fetch('/api/thresholds',{method:'POST',"));
-      client.print(F("headers:{'Content-Type':'application/"
-                     "x-www-form-urlencoded'},body:thresholdParams});"));
-      client.print(F("}).then(r=>r.text()).then(data=>addConsoleMessage('"
-                     "Settings applied successfully','success'))"));
-      client.print(F(
-          ".catch(()=>addConsoleMessage('Error applying settings','error'))}"));
+      client.print(F("body:params}).then(r=>r.text()).then(data=>{"
+                     "addConsoleMessage('Settings saved successfully',"
+                     "'success');}).catch(()=>addConsoleMessage('Error "
+                     "saving settings','error'))}"));
       client.print(F("document.getElementById('letterSpacing')."
                      "addEventListener('input',function(){"));
       client.print(F("document.getElementById('spacingValue').textContent=this."
@@ -794,9 +1000,9 @@ void handleClient(TimerDisplay &timerDisplay) {
       client.print(F("container.classList.remove('content-with-sticky');}}"));
       client.print(F("window.addEventListener('resize',updateStickyButton);"));
 
+      client.print(F("loadSettings();"));
       client.print(F("loadThresholds();"));
       client.print(F("updateButtonState();"));
-      client.print(F("updateStatus();"));
       client.print(F("updateNetworkStatus();"));
       client.print(F("updateWebSocketStatus();"));
       client.print(F("updateStickyButton();"));
@@ -804,6 +1010,27 @@ void handleClient(TimerDisplay &timerDisplay) {
       client.print(F("setInterval(updateNetworkStatus, 5000);"));
       client.print(F("setInterval(updateWebSocketStatus, 5000);"));
       client.print(F("setInterval(updateStickyButton, 500);"));
+      // Overwrite updateWebSocketStatus with logging version
+      client.print(F("let lastWsState=false;"));
+      client.print(F("updateWebSocketStatus=function(){"));
+      client.print(
+          F("fetch('/api/websocket/status').then(r=>r.json()).then(data=>{"));
+      client.print(F("const wsStatus=document.getElementById('wsStatus');"));
+      client.print(F("if(data.connected){"));
+      client.print(F("wsStatus.innerHTML='<span style=\"color:#4CAF50\">✅ "
+                     "Connected to '+data.url+'</span>';"));
+      client.print(F("if(!lastWsState){addConsoleMessage('WebSocket Connected "
+                     "to '+data.url, 'success');}"));
+      client.print(F("lastWsState=true;"));
+      client.print(F("}else{"));
+      client.print(F("wsStatus.innerHTML='<span style=\"color:#888\">⚪ "
+                     "Not connected</span>';"));
+      client.print(F("if(lastWsState){addConsoleMessage('WebSocket "
+                     "Disconnected', 'warning');}"));
+      client.print(F("lastWsState=false;"));
+      client.print(F("}"));
+      client.print(F("}).catch(()=>{});};"));
+
       client.print(F("</script></body></html>"));
 
       client.stop();
@@ -850,15 +1077,15 @@ void handleClient(TimerDisplay &timerDisplay) {
           sendHTTPResponse(client, 200, "application/json", response);
 
         } else if (requestPath == "/api/settings") {
-          // Apply Settings
-          // Format:
-          // action=settings&duration=180&font=4&spacing=3&brightness=255
+          // Parse all settings from consolidated POST
           int duration = 180;
           int fontId = 0;
           int spacing = 3;
           int brightness = 255;
+          String thresholdsData = "";
+          String defaultColorData = "";
 
-          // Simple parser
+          // Robust key-value parsing
           int pos = 0;
           while (pos < postData.length()) {
             int amp = postData.indexOf('&', pos);
@@ -868,7 +1095,7 @@ void handleClient(TimerDisplay &timerDisplay) {
             int eq = pair.indexOf('=');
             if (eq > 0) {
               String key = pair.substring(0, eq);
-              String val = pair.substring(eq + 1);
+              String val = urlDecode(pair.substring(eq + 1));
               if (key == "duration")
                 duration = val.toInt();
               else if (key == "font")
@@ -877,79 +1104,68 @@ void handleClient(TimerDisplay &timerDisplay) {
                 spacing = val.toInt();
               else if (key == "brightness")
                 brightness = val.toInt();
+              else if (key == "thresholds")
+                thresholdsData = val;
+              else if (key == "default")
+                defaultColorData = val;
             }
             pos = amp + 1;
           }
 
-          // Apply Duration
+          // Apply Timer Duration
           Timer::Components comp;
           comp.minutes = duration / 60;
           comp.seconds = duration % 60;
           comp.milliseconds = 0;
           timerDisplay.getTimer().setDuration(comp);
-          timerDisplay.getTimer().reset(); // Reset to new duration
+          timerDisplay.getTimer().reset();
 
           // Apply Display Settings
-          timerDisplay.setFont(getFontById(fontId));
+          timerDisplay.setFont(getFontById(fontId), fontId); // Fix: Pass fontId
           timerDisplay.setTextSize(getTextSizeForFont(fontId));
           timerDisplay.setLetterSpacing(spacing);
           timerDisplay.setBrightness(brightness);
 
-          sendHTTPResponse(client, 200, "text/plain", "Settings applied");
-          // Update thresholds
-          // Parsing thresholds=120:%23FFFF00|60:%23FF0000&default=%2300FF00
-          String thresholdsData = "";
-          String defaultColorData = "";
+          // Apply Color Thresholds
+          if (thresholdsData.length() > 0) {
+            timerDisplay.clearColorThresholds();
+            int start = 0;
+            while (start < thresholdsData.length()) {
+              int end = thresholdsData.indexOf('|', start);
+              if (end == -1)
+                end = thresholdsData.length();
 
-          int split = postData.indexOf('&');
-          if (split > 0) {
-            String p1 = postData.substring(0, split);
-            String p2 = postData.substring(split + 1);
-            if (p1.startsWith("thresholds="))
-              thresholdsData = urlDecode(p1.substring(11));
-            if (p2.startsWith("default="))
-              defaultColorData = urlDecode(p2.substring(8));
-            // Check other order
-            if (p2.startsWith("thresholds="))
-              thresholdsData = urlDecode(p2.substring(11));
-            if (p1.startsWith("default="))
-              defaultColorData = urlDecode(p1.substring(8));
-          } else {
-            if (postData.startsWith("thresholds="))
-              thresholdsData = urlDecode(postData.substring(11));
-            if (postData.startsWith("default="))
-              defaultColorData = urlDecode(postData.substring(8));
-          }
-
-          timerDisplay.clearColorThresholds();
-
-          // Parse thresholds (format: seconds:color|seconds:color)
-          int start = 0;
-          while (start < thresholdsData.length()) {
-            int end = thresholdsData.indexOf('|', start);
-            if (end == -1)
-              end = thresholdsData.length();
-
-            String token = thresholdsData.substring(start, end);
-            int colon = token.indexOf(':');
-            if (colon > 0) {
-              int seconds = token.substring(0, colon).toInt();
-              String color = token.substring(colon + 1);
-              uint8_t r, g, b;
-              parseColor(color, r, g, b);
-              timerDisplay.addColorThreshold(seconds, r, g, b);
+              String token = thresholdsData.substring(start, end);
+              int colon = token.indexOf(':');
+              if (colon > 0) {
+                int seconds = token.substring(0, colon).toInt();
+                String color = token.substring(colon + 1);
+                uint8_t r, g, b;
+                parseColor(color, r, g, b);
+                timerDisplay.addColorThreshold(seconds, r, g, b);
+              }
+              start = end + 1;
             }
-            start = end + 1;
           }
 
-          // Parse default color
+          // Apply Default Color
           if (defaultColorData.length() > 0) {
             uint8_t r, g, b;
             parseColor(defaultColorData, r, g, b);
-            timerDisplay.setColor(r, g, b);
+            timerDisplay.setDefaultColor(r, g, b);
+            // Also set current color to default if timer is idle
+            if (timerDisplay.getTimer().isIdle()) {
+              timerDisplay.setColor(r, g, b);
+            }
           }
 
-          sendHTTPResponse(client, 200, "text/plain", "Thresholds updated");
+          // Persist all changes
+          if (saveSettings(timerDisplay)) {
+            sendHTTPResponse(client, 200, "text/plain", "Settings saved");
+          } else {
+            sendHTTPResponse(client, 500, "text/plain",
+                             "Error saving settings");
+          }
         } else if (requestPath == "/api/websocket/connect") {
           // WebSocket Connect
           String host = "";
@@ -1010,20 +1226,50 @@ void handleClient(TimerDisplay &timerDisplay) {
           json += "}";
           sendHTTPResponse(client, 200, "application/json", json);
         } else if (requestPath == "/api/thresholds") {
-          String json = "{\"thresholds\":[";
-          // We can't easily get thresholds back from TimerDisplay without
-          // adding a getter But for now we'll return empty or current state if
-          // we track it
-          json += "],\"defaultColor\":\"#00FF00\"}";
-          sendHTTPResponse(client, 200, "application/json", json);
+          JsonDocument doc;
+          JsonArray thresholds = doc["thresholds"].to<JsonArray>();
+          size_t count = 0;
+          const TimerDisplay::ColorThreshold *data =
+              timerDisplay.getColorThresholds(count);
+          for (size_t i = 0; i < count; i++) {
+            JsonObject t = thresholds.add<JsonObject>();
+            t["seconds"] = data[i].seconds;
+            char colorHex[8];
+            snprintf(colorHex, sizeof(colorHex), "#%02X%02X%02X", data[i].r,
+                     data[i].g, data[i].b);
+            t["color"] = colorHex;
+          }
+
+          uint8_t dr, dg, db;
+          timerDisplay.getDefaultColor(dr, dg, db);
+          char defaultHex[8];
+          snprintf(defaultHex, sizeof(defaultHex), "#%02X%02X%02X", dr, dg, db);
+          doc["defaultColor"] = defaultHex;
+
+          String response;
+          serializeJson(doc, response);
+          sendHTTPResponse(client, 200, "application/json", response);
+        } else if (requestPath == "/api/settings") {
+          JsonDocument doc;
+          doc["fontId"] = timerDisplay.getFontId();
+          doc["spacing"] = timerDisplay.getLetterSpacing();
+          doc["brightness"] = timerDisplay.getBrightness();
+          doc["duration"] = timerDisplay.getTimer().getDurationSeconds();
+
+          String response;
+          serializeJson(doc, response);
+          sendHTTPResponse(client, 200, "application/json", response);
         } else if (requestPath == "/api/network/status") {
           String json = "{\"ip\":\"" + getIPAddressString() + "\"}";
           sendHTTPResponse(client, 200, "application/json", json);
         } else if (requestPath == "/api/websocket/status") {
           String json = "{";
           if (wsClient) {
-            json += "\"connected\":" +
-                    String(wsClient->isConnected() ? "true" : "false") + ",";
+            bool connected = wsClient->isConnected();
+            Serial.print("API Status: ");
+            Serial.println(connected ? "Connected" : "Not Connected");
+            json +=
+                "\"connected\":" + String(connected ? "true" : "false") + ",";
             json += "\"url\":\"" + String(wsClient->getServerUrl()) + "\"";
           } else {
             json += "\"connected\":false";

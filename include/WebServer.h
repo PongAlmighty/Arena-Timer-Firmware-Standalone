@@ -47,6 +47,18 @@ void setWebSocketClient(WebSocketClient *wsClient);
 /// @brief Get the current Ethernet server
 EthernetServer &getServer();
 
+/// @brief Load settings from filesystem
+/// @param timerDisplay Reference to the TimerDisplay object to apply settings
+/// to
+/// @return true if successful, false otherwise
+bool loadSettings(TimerDisplay &timerDisplay);
+
+/// @brief Save settings to filesystem
+/// @param timerDisplay Reference to the TimerDisplay object to save settings
+/// from
+/// @return true if successful, false otherwise
+bool saveSettings(TimerDisplay &timerDisplay);
+
 /// @brief Get the IP address as a string
 /// @return IP address string (e.g., "192.168.1.100")
 String getIPAddressString();

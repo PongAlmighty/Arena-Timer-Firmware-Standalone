@@ -12,6 +12,7 @@ TimerDisplay::TimerDisplay(Adafruit_Protomatter &matrix, Mode mode)
       _color(matrix.color565(255, 255, 255)),        // Default white
       _default_r(0), _default_g(255), _default_b(0), // Default green
       _brightness(255),                              // Default full brightness
+      _font_id(4), // Default to Sans Bold 12pt (ID 4)
       _threshold_count(0), _last_blink_ms(0), _blink_state(true),
       _was_expired(false) {
   // Initialize cached positions as invalid
@@ -33,16 +34,21 @@ void TimerDisplay::setTextSize(uint8_t size) {
   calculateCachedPositions();
 }
 
-void TimerDisplay::setFont(const GFXfont *font) {
+void TimerDisplay::setFont(const GFXfont *font, int fontId) {
   _current_font = font; // Track the font
+  _font_id = fontId;    // Track the font ID
   _matrix.setFont(font);
   calculateCachedPositions();
 }
+
+int TimerDisplay::getFontId() const { return _font_id; }
 
 void TimerDisplay::setLetterSpacing(int8_t spacing) {
   _letter_spacing = spacing;
   calculateCachedPositions(); // Recalculate since spacing affects width
 }
+
+int8_t TimerDisplay::getLetterSpacing() const { return _letter_spacing; }
 
 void TimerDisplay::setColor(uint8_t r, uint8_t g, uint8_t b) {
   _color = _matrix.color565(r, g, b);

@@ -38,12 +38,21 @@ public:
 
   /// @brief Set a custom font (from Adafruit_GFX font library)
   /// @param font Pointer to GFXfont structure, or nullptr for default font
-  void setFont(const GFXfont *font);
+  /// @param fontId ID of the font (for persistence)
+  void setFont(const GFXfont *font, int fontId = 4);
+
+  /// @brief Get the current font ID
+  /// @return Font ID
+  int getFontId() const;
 
   /// @brief Set letter spacing (extra pixels between characters)
   /// @param spacing Number of pixels to add between characters (can be
   /// negative)
   void setLetterSpacing(int8_t spacing);
+
+  /// @brief Get current letter spacing
+  /// @return Letter spacing in pixels
+  int8_t getLetterSpacing() const;
 
   /// @brief Set the text color
   /// @param r Red (0-255)
@@ -110,6 +119,7 @@ private:
   uint8_t _text_size;
   const GFXfont
       *_current_font;     // Track the current font (NULL = default bitmap font)
+  int _font_id;           // Track the font ID for persistence
   int8_t _letter_spacing; // Extra spacing between characters (pixels)
   uint16_t _color;
   uint8_t _default_r, _default_g, _default_b; // Default color (no threshold)
