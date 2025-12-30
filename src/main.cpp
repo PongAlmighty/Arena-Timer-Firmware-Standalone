@@ -23,6 +23,11 @@ uint8_t oePin = 0;
 #define ETH_RX 12
 #define ETH_CS 21
 
+// Button Pins (Available on RP2040-Shim headers)
+#define BTN_START 7    // D5
+#define BTN_STOP 2     // A4 (also Reset on long press)
+#define BTN_NET_INFO 3 // A5
+
 // ----------------------------------------------------------------------------
 // GLOBAL OBJECTS
 // ----------------------------------------------------------------------------
@@ -107,13 +112,62 @@ void setup() {
   }
 
   matrix.fillScreen(0);
+
+  // 6. Initialize Buttons
+  pinMode(BTN_START, INPUT_PULLUP);
+  pinMode(BTN_STOP, INPUT_PULLUP);
+  pinMode(BTN_NET_INFO, INPUT_PULLUP);
 }
 
 // ----------------------------------------------------------------------------
 // LOOP
 // ----------------------------------------------------------------------------
 void loop() {
-  timerDisplay.update();
+  static unsigned long last_btn_ms = 0;
+  static unsigned long stop_press_start_ms = 0;
+  static bool was_stop_pressed = false;
+
+  // 1. Check Network Info Button (Highest priority, non-blocking hold)
+  if (digitalRead(BTN_NET_INFO) == LOW) {
+    timerDisplay.renderNetworkStatus();
+  } else {
+    // 2. Normal Timer Update
+    timerDisplay.update();
+
+    // 3. Handle Start Button (Debounced)
+    if (digitalRead(BTN_START) == LOW && (millis() - last_btn_ms > 300)) {
+      if (!timerDisplay.getTimer().isRunning()) {
+        Serial.println("Physical Button: START");
+        timerDisplay.getTimer().start();
+      }
+      last_btn_ms = millis();
+    }
+
+    // 4. Handle Stop/Reset Button (Short press = Stop, Long press = Reset)
+    bool stop_currently_pressed = (digitalRead(BTN_STOP) == LOW);
+    if (stop_currently_pressed && !was_stop_pressed) {
+      // Button just pressed
+      stop_press_start_ms = millis();
+      was_stop_pressed = true;
+    } else if (!stop_currently_pressed && was_stop_pressed) {
+      // Button just released
+      unsigned long press_duration = millis() - stop_press_start_ms;
+      if (press_duration > 2000) {
+        // Long press (>2s) = RESET
+        Serial.println("Physical Button: RESET (Long Press)");
+        timerDisplay.getTimer().reset();
+      } else if (press_duration > 50) {
+        // Short press = STOP
+        if (timerDisplay.getTimer().isRunning()) {
+          Serial.println("Physical Button: STOP");
+          timerDisplay.getTimer().stop();
+        }
+      }
+      was_stop_pressed = false;
+      last_btn_ms = millis();
+    }
+  }
+
   Ethernet.maintain();
   WebServer::handleClient(timerDisplay);
   if (wsClient) {

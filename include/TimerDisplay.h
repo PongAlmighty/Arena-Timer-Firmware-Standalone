@@ -111,6 +111,9 @@ public:
   /// @param duration_ms Duration to show the message in milliseconds
   void showMessage(const String &msg, uint16_t duration_ms = 3000);
 
+  /// @brief Render network status and IP address (used for held button view)
+  void renderNetworkStatus();
+
 private:
   Adafruit_Protomatter &_matrix;
   Timer _timer;

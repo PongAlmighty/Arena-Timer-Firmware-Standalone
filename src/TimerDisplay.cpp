@@ -4,6 +4,7 @@
 
 #include "TimerDisplay.h"
 #include <Arduino.h>
+#include <Ethernet_Generic.h>
 
 TimerDisplay::TimerDisplay(Adafruit_Protomatter &matrix, Mode mode)
     : _matrix(matrix), _timer(), _mode(mode), _text_size(1),
@@ -451,4 +452,37 @@ void TimerDisplay::applyBrightness(uint8_t &r, uint8_t &g, uint8_t &b) {
     g = (g * _brightness) / 255;
     b = (b * _brightness) / 255;
   }
+}
+
+void TimerDisplay::renderNetworkStatus() {
+  _matrix.fillScreen(0);
+  const GFXfont *oldFont = _current_font;
+  _matrix.setFont(NULL); // Use default font for small text
+  _matrix.setTextSize(1);
+  _matrix.setTextColor(_matrix.color565(0, 255, 255)); // Cyan
+
+  _matrix.setCursor(0, 0);
+  _matrix.println("NETWORK:");
+
+  _matrix.setTextColor(_matrix.color565(255, 255, 255)); // White
+  IPAddress ip = Ethernet.localIP();
+  _matrix.print(String(ip[0]) + "." + String(ip[1]) + "." + String(ip[2]) +
+                "." + String(ip[3]));
+  _matrix.setCursor(0, 16);
+
+  if (Ethernet.linkStatus() == LinkON) {
+    _matrix.setTextColor(_matrix.color565(0, 255, 0)); // Green
+    _matrix.println("Link: OK");
+  } else {
+    _matrix.setTextColor(_matrix.color565(255, 0, 0)); // Red
+    _matrix.println("Link: NO CONN");
+  }
+
+  _matrix.setCursor(0, 24);
+  _matrix.setTextColor(_matrix.color565(255, 255, 0)); // Yellow
+  _matrix.print("mDNS: ");
+  _matrix.println("active");
+
+  _matrix.show();
+  _matrix.setFont(oldFont); // Restore font for next regular draw
 }
