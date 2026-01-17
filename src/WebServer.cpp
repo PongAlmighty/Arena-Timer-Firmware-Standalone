@@ -744,7 +744,7 @@ void handleClient(TimerDisplay &timerDisplay) {
         client.print(wsClient->getPort());
         client.print(F("' min='1' max='65535'>"));
       } else {
-        client.print(F("<input type='number' id='wsPort' value='8766' min='1' "
+        client.print(F("<input type='number' id='wsPort' value='8765' min='1' "
                        "max='65535'>"));
       }
 
@@ -756,6 +756,30 @@ void handleClient(TimerDisplay &timerDisplay) {
       } else {
         client.print(F("<input type='text' id='wsPath' value='/socket.io/'>"));
       }
+      client.print(F("</div><div class='form-group'><label>Target Timer "
+                     "(Namespace):</label>"));
+      client.print(F("<select id='wsNamespace'>"));
+      String currentNs = "/";
+      if (wsClient)
+        currentNs = wsClient->getNamespace();
+
+      client.print(F("<option value='/'"));
+      if (currentNs == "/")
+        client.print(F(" selected"));
+      client.print(F(">Single Timer (Default)</option>"));
+
+      for (int i = 1; i <= 5; i++) {
+        String ns = "/timer" + String(i);
+        client.print(F("<option value='"));
+        client.print(ns);
+        client.print(F("'"));
+        if (currentNs == ns)
+          client.print(F(" selected"));
+        client.print(F(">Timer "));
+        client.print(i);
+        client.print(F("</option>"));
+      }
+      client.print(F("</select>"));
       client.print(F("</div><div style='display:flex;gap:10px'>"));
       client.print(F("<button class='btn-start' onclick='connectWebSocket()' "
                      "style='flex:1'>"));
@@ -955,12 +979,13 @@ void handleClient(TimerDisplay &timerDisplay) {
 
       client.print(F("function connectWebSocket(){"));
       client.print(F("const host=document.getElementById('wsHost').value;"));
-      client.print(F("const port=document.getElementById('wsPort').value;"));
-      client.print(F("const path=document.getElementById('wsPath').value;"));
-      client.print(F("if(!host){addConsoleMessage('Please enter a "
-                     "host','error');return;}"));
-      client.print(F("const params=new "
-                     "URLSearchParams({host:host,port:port,path:path});"));
+      client.print(
+          F("const port=document.getElementById('wsPort').value;const "
+            "path=document.getElementById('wsPath').value;const "
+            "ns=document.getElementById('wsNamespace').value;if(!host){"
+            "addConsoleMessage('Please enter a host','error');return;}const "
+            "params=new "
+            "URLSearchParams({host:host,port:port,path:path,ns:ns});"));
       client.print(
           F("fetch('/api/websocket/connect',{method:'POST',body:params})"));
       client.print(F(".then(r=>r.json()).then(data=>{"));
@@ -1171,6 +1196,7 @@ void handleClient(TimerDisplay &timerDisplay) {
           String host = "";
           int port = 8765;
           String path = "/socket.io/";
+          String ns = "/";
 
           // Simple parser for urlencoded body
           int pos = 0;
@@ -1189,12 +1215,14 @@ void handleClient(TimerDisplay &timerDisplay) {
                 port = val.toInt();
               else if (key == "path")
                 path = val;
+              else if (key == "ns")
+                ns = val;
             }
             pos = amp + 1;
           }
 
           if (wsClient && host.length() > 0) {
-            wsClient->connect(host.c_str(), port, path.c_str());
+            wsClient->connect(host.c_str(), port, path.c_str(), ns.c_str());
             sendHTTPResponse(
                 client, 200, "application/json",
                 "{\"status\":\"success\",\"message\":\"Connecting...\"}");

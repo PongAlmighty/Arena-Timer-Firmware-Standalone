@@ -33,34 +33,78 @@ A professional countdown timer system for competitive arenas, combat sports, and
 ## Hardware
 
 ### Required Components
-- **Waveshare RP2040-Zero** microcontroller
+- **Silicognition RP2040-Shim** microcontroller
+  - Designed to solder directly to the HUB75 input header on the back of the matrix
+  - Provides integrated power regulation (5V to 3.3V)
 - **64x32 RGB LED Matrix Panel** (HUB75 interface, P5 pitch recommended)
-- **W5500 Ethernet Module** (SPI interface)
+- **W5500 Ethernet Module** (SPI interface, PoE-FeatherWing or compatible)
 - **5V Power Supply** (minimum 2A, 4A recommended for full brightness / more pixels)
   - I used a 5V 20W PoE splitter mounted to the back of the enclosure
 
-### Critical Pin Configuration
-**Important:** This firmware relies on a specific pin mapping to avoid conflicts between the Matrix and Ethernet.
+### Pin Configuration
 
-| Component | Function | GPIO Pin |
-|-----------|----------|----------|
-| **Ethernet** | **SCK** | **10** (SPI1) |
-| **Ethernet** | **MOSI** | **11** (SPI1) |
-| **Ethernet** | **MISO** | **12** (SPI1) |
-| **Ethernet** | **CS**   | **21** |
-| Matrix    | R1/G1/B1 | 16, 17, 20 |
-| Matrix    | CLK      | 22 |
+**Important:** This firmware uses a specific pin mapping optimized for the RP2040-Shim mounting directly to the HUB75 header. The Ethernet module uses SPI1 to avoid conflicts with the Matrix control signals.
 
-*Note: The Ethernet library MUST be configured to use SPI1 (via build flags) to avoid conflicting with the Matrix R1/G1 pins on SPI0.*
+#### RP2040-Shim GPIO Pinout
 
-### 3D Enclosure
-3D model files for a custom LED matrix enclosure are available in the `3d-models/` directory:
+| RP2040 GPIO | Function | Peripheral | Shim Label | Notes |
+|-------------|----------|------------|------------|-------|
+| **GPIO 0** | Output Enable (OE) | Matrix | TX | Active low |
+| **GPIO 1** | Latch (LAT) | Matrix | RX | |
+| **GPIO 6** | Red Data 2 (R2) | Matrix | D4 | Bottom half |
+| **GPIO 10** | SPI Clock | Ethernet | SCK | SPI1 |
+| **GPIO 11** | SPI MOSI | Ethernet | MOSI | SPI1 |
+| **GPIO 12** | SPI MISO | Ethernet | MISO | SPI1 |
+| **GPIO 16** | Red Data 1 (R1) | Matrix | SDA | Top half |
+| **GPIO 17** | Green Data 1 (G1) | Matrix | SCL | Top half |
+| **GPIO 19** | Green Data 2 (G2) | Matrix | D6 | Bottom half |
+| **GPIO 20** | Blue Data 1 (B1) | Matrix | D9 | Top half |
+| **GPIO 21** | SPI Chip Select | Ethernet | D11 | CS for W5500 |
+| **GPIO 22** | Matrix Clock (CLK) | Matrix | D13 | Pixel clock |
+| **GPIO 25** | Blue Data 2 (B2) | Matrix | D25 | Bottom half |
+| **GPIO 26** | Address D | Matrix | A3 | Row select |
+| **GPIO 27** | Address C | Matrix | A2 | Row select |
+| **GPIO 28** | Address B | Matrix | A1 | Row select |
+| **GPIO 29** | Address A | Matrix | A0 | Row select |
+
+> **Warning:** GPIO 24 is hardwired to VBUS sensing. Never use for I/O or the board will crash.
+
+#### HUB75 Connector Pinout (Matrix Side)
+
+| HUB75 Pin | Signal | RP2040 GPIO | Function |
+|-----------|--------|-------------|----------|
+| 1 | R1 | GPIO 16 | Red Data (Top) |
+| 2 | G1 | GPIO 17 | Green Data (Top) |
+| 3 | B1 | GPIO 20 | Blue Data (Top) |
+| 4 | GND | - | Ground |
+| 5 | R2 | GPIO 6 | Red Data (Bottom) |
+| 6 | G2 | GPIO 19 | Green Data (Bottom) |
+| 7 | B2 | GPIO 25 | Blue Data (Bottom) |
+| 8 | GND | - | Ground |
+| 9 | A | GPIO 29 | Address A |
+| 10 | B | GPIO 28 | Address B |
+| 11 | C | GPIO 27 | Address C |
+| 12 | D | GPIO 26 | Address D |
+| 13 | CLK | GPIO 22 | Pixel Clock |
+| 14 | LAT | GPIO 1 | Latch |
+| 15 | OE | GPIO 0 | Output Enable |
+| 16 | GND | - | Ground |
+
+> **Note:** The RP2040-Shim is powered by connecting 5V from the matrix power supply to the VUSB pin (3rd pin on right header). The onboard regulator converts this to 3.3V for logic. Do not connect USB while external 5V is applied unless using a data-only cable.
+
+For complete wiring diagrams and PCB design files, see [wiring_connections.md](wiring_connections.md).
+
+### Custom PCB & 3D Enclosure
+
+**Custom PCB** is currently in production and will be added to this repository once tested and verified.
+
+**3D Enclosure** files for a custom LED matrix enclosure are available in the `3d-models/` directory:
 - `Timer Assembly v23.step` - STEP format for CAD editing
 - `Timer Assembly v23.f3z` - Fusion 360 archive format
 
 Files are print-ready and designed for:
 - Standard 64x32 P5 RGB matrix panels
-- Electronics mounting (currently using custom protoboard assembly)
+- RP2040-Shim direct mounting to HUB75 header
 - PoE splitter bracket mount
 
 ## Quick Start

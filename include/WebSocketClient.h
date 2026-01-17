@@ -13,7 +13,7 @@ public:
 
   // Connection management
   bool connect(const char *host, uint16_t port,
-               const char *path = "/socket.io/");
+               const char *path = "/socket.io/", const char *ns = "/");
   void disconnect();
   bool isConnected();
 
@@ -31,6 +31,7 @@ private:
   String _serverHost;
   uint16_t _serverPort;
   String _serverPath;
+  String _namespace;
   String _fullUrl;
 
   bool _connected;
@@ -65,6 +66,7 @@ public:
   String getHost() { return _serverHost; }
   uint16_t getPort() { return _serverPort; }
   String getPath() { return _serverPath; }
+  String getNamespace() { return _namespace; }
 
 private:
 #ifdef ARDUINO_ARCH_RP2040

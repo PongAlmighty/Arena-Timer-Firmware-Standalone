@@ -19,7 +19,7 @@ WebSocketClient::WebSocketClient(Timer *timer)
     : _timer(timer), _connected(false), _connectionAttempted(false),
       _manuallyDisconnected(false), _lastReconnectAttempt(0),
       _reconnectInterval(10000), _autoReconnect(true), _serverPort(8765),
-      _connectInProgress(false), _consecutiveFailures(0) {
+      _namespace("/"), _connectInProgress(false), _consecutiveFailures(0) {
 
   // Load saved settings
   loadSettings();
@@ -36,8 +36,8 @@ WebSocketClient::WebSocketClient(Timer *timer)
   _client.setReconnectInterval(0);
 }
 
-bool WebSocketClient::connect(const char *host, uint16_t port,
-                              const char *path) {
+bool WebSocketClient::connect(const char *host, uint16_t port, const char *path,
+                              const char *ns) {
   if (_connected) {
     disconnect();
   }
@@ -50,9 +50,13 @@ bool WebSocketClient::connect(const char *host, uint16_t port,
   _serverHost = String(host);
   _serverPort = port;
   _serverPath = String(path);
+  _namespace = String(ns);
 
   // Build URL for display
   _fullUrl = "ws://" + _serverHost + ":" + String(_serverPort) + _serverPath;
+  if (_namespace != "/") {
+    _fullUrl += " (NS: " + _namespace + ")";
+  }
 
   DEBUG_PRINT("Connecting to server: ");
   DEBUG_PRINTLN(_fullUrl);
@@ -111,6 +115,16 @@ void WebSocketClient::loadSettings() {
     buf[len] = 0;
     _serverPath = String(buf);
 
+    // Namespace
+    len = EEPROM.read(250);
+    for (int i = 0; i < len && i < 63; i++) {
+      buf[i] = EEPROM.read(251 + i);
+    }
+    buf[len] = 0;
+    _namespace = String(buf);
+    if (_namespace.length() == 0)
+      _namespace = "/";
+
     Serial.println("Loaded saved WebSocket settings:");
     Serial.print("Host: ");
     Serial.println(_serverHost);
@@ -118,9 +132,14 @@ void WebSocketClient::loadSettings() {
     Serial.println(_serverPort);
     Serial.print("Path: ");
     Serial.println(_serverPath);
+    Serial.print("Namespace: ");
+    Serial.println(_namespace);
 
     // Update full URL
     _fullUrl = "ws://" + _serverHost + ":" + String(_serverPort) + _serverPath;
+    if (_namespace != "/") {
+      _fullUrl += " (NS: " + _namespace + ")";
+    }
 
     // Auto-connect on boot
     _connectionAttempted = true;
@@ -153,6 +172,15 @@ void WebSocketClient::saveSettings() {
   EEPROM.write(122, len);
   for (int i = 0; i < len; i++) {
     EEPROM.write(123 + i, _serverPath[i]);
+  }
+
+  // Namespace (start at 250)
+  len = _namespace.length();
+  if (len > 60)
+    len = 60;
+  EEPROM.write(250, len);
+  for (int i = 0; i < len; i++) {
+    EEPROM.write(251 + i, _namespace[i]);
   }
 
   EEPROM.commit();
@@ -306,8 +334,12 @@ void WebSocketClient::handleWebSocketEvent(WStype_t type, uint8_t *payload,
     // Handle Socket.IO protocol messages
     if (data.startsWith("0")) {
       DEBUG_PRINTLN("Socket.IO: Connection request");
-      // Send connection response
-      _client.sendTXT("40");
+      // Send connection response - including namespace if not default
+      if (_namespace == "/") {
+        _client.sendTXT("40");
+      } else {
+        _client.sendTXT("40" + _namespace + ",");
+      }
       return;
     } else if (data.startsWith("40")) {
       DEBUG_PRINTLN("Socket.IO: Connected successfully");
