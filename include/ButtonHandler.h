@@ -20,9 +20,21 @@ public:
   /// @brief Poll both buttons. Call as first statement in loop()
   void poll();
 
+  /// @brief Returns true while Button 2 has been held >= 400ms (persistent state)
+  bool isArmed() const;
+
+  /// @brief One-shot: true once per poll() cycle when Button 1 fell while disarmed
+  bool startStopPressed() const;
+
+  /// @brief One-shot: true once per poll() cycle when Button 1 fell while armed
+  bool stopResetPressed() const;
+
 private:
   uint8_t _pin1;
   uint8_t _pin2;
   Bounce _b1;
   Bounce _b2;
+  bool _armed;
+  bool _startStopPending;
+  bool _stopResetPending;
 };
