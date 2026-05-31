@@ -46,6 +46,11 @@ private:
   unsigned int _consecutiveFailures; // For exponential backoff
   bool _autoReconnect;
 
+  // Phase 3: Socket.IO bidirectional sync state
+  String _suppressAction;          // action string being echo-suppressed ("" = not suppressing)
+  unsigned long _suppressUntilMs;  // millis() expiry of suppression window (SYNC-02)
+  bool _initialSyncPending;        // true = next start event skips request_timer_status round-trip (SYNC-03)
+
   // Socket.IO support
   bool _isSocketIO;
   bool _socketIOFallback; // Try WebSocket if Socket.IO fails
