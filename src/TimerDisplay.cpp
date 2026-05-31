@@ -4,7 +4,7 @@
 
 #include "TimerDisplay.h"
 #include <Arduino.h>
-#include <Ethernet_Generic.h>
+#include <Ethernet_Generic.hpp>
 
 TimerDisplay::TimerDisplay(Adafruit_Protomatter &matrix, Mode mode)
     : _matrix(matrix), _timer(), _mode(mode), _text_size(1),

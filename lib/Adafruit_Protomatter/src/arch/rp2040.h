@@ -41,7 +41,7 @@
 // PWM has finer resolution, but alarm is adequate -- this is more about
 // which peripheral we'd rather use, as both are finite resources.
 #ifndef _PM_CLOCK_PWM
-#define _PM_CLOCK_PWM (1)
+#define _PM_CLOCK_PWM (0)
 #endif
 
 #if _PM_CLOCK_PWM // Use PWM for timing
@@ -242,18 +242,8 @@ uint32_t _PM_timerStop(Protomatter_core *core) {
   return _PM_timerGetCount(core);
 }
 
-#if (F_CPU >= 250000000)
-#define _PM_clockHoldLow asm("nop; nop; nop;");
-#define _PM_clockHoldHigh asm("nop; nop; nop;");
-#elif (F_CPU >= 175000000)
-#define _PM_clockHoldLow asm("nop; nop; nop;");
-#define _PM_clockHoldHigh asm("nop;");
-#elif (F_CPU >= 125000000)
-#define _PM_clockHoldLow asm("nop; nop; nop;");
-#define _PM_clockHoldHigh asm("nop;");
-#elif (F_CPU >= 100000000)
-#define _PM_clockHoldLow asm("nop;");
-#endif // No NOPs needed at lower speeds
+#define _PM_clockHoldLow asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
+#define _PM_clockHoldHigh asm("nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop; nop;");
 
 #define _PM_chunkSize 8
 #if _PM_CLOCK_PWM
