@@ -1,3 +1,4 @@
+#include "ButtonHandler.h"
 #include "TimerDisplay.h"
 #include "WebServer.h"
 #include "WebSocketClient.h"
@@ -23,6 +24,10 @@ uint8_t oePin = 0;
 #define ETH_RX 12
 #define ETH_CS 21
 
+// Button Pins (V2 PCB — fixed, do not change)
+#define BTN_1 14
+#define BTN_2 15
+
 // ----------------------------------------------------------------------------
 // GLOBAL OBJECTS
 // ----------------------------------------------------------------------------
@@ -31,6 +36,7 @@ Adafruit_Protomatter matrix(64, 4, 1, rgbPins, 4, addrPins, clockPin, latchPin,
                             oePin, true);
 
 TimerDisplay timerDisplay(matrix);
+ButtonHandler buttonHandler(BTN_1, BTN_2);
 WebSocketClient *wsClient = nullptr;
 
 // Network Config defaults
@@ -63,7 +69,10 @@ void setup() {
   matrix.println("Timer");
   matrix.show();
 
-  // 2. Ethernet Hardware Init (SPI1)
+  // 2. Button Init
+  buttonHandler.begin();
+
+  // 3. Ethernet Hardware Init (SPI1)
   SPI1.setSCK(ETH_SCK);
   SPI1.setTX(ETH_TX);
   SPI1.setRX(ETH_RX);
@@ -71,7 +80,7 @@ void setup() {
 
   Ethernet.init(ETH_CS);
 
-  // 3. Network Logic Init
+  // 4. Network Logic Init
   Serial.print("Initializing Network...");
   timerDisplay.showMessage("DHCP...");
   if (WebServer::init(mac, ip)) {
@@ -95,11 +104,11 @@ void setup() {
     matrix.show();
   }
 
-  // 4. WebSocket Init
+  // 5. WebSocket Init
   wsClient = new WebSocketClient(&timerDisplay.getTimer());
   WebServer::setWebSocketClient(wsClient);
 
-  // 5. Load Persistent Settings
+  // 6. Load Persistent Settings
   Serial.print("Loading saved settings...");
   if (WebServer::loadSettings(timerDisplay)) {
     Serial.println("OK");
@@ -119,7 +128,7 @@ void setup() {
 // LOOP
 // ----------------------------------------------------------------------------
 void loop() {
-  // 2. Normal Timer Update
+  buttonHandler.poll();
   timerDisplay.update();
 
   Ethernet.maintain();
