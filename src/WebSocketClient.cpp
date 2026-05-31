@@ -123,8 +123,27 @@ void WebSocketClient::loadSettings() {
     }
     buf[len] = 0;
     _namespace = String(buf);
-    if (_namespace.length() == 0)
+
+    // Validate namespace against the known-valid set ("/", "/timer1".."/timer5").
+    // Any stale or malformed value (e.g. "/timer/1" left by a previous firmware
+    // bug) is reset to "/" and immediately overwritten in EEPROM so it cannot
+    // cause repeated bad connects across reboots.
+    bool nsValid = (_namespace == "/");
+    for (int n = 1; n <= 5 && !nsValid; n++) {
+      if (_namespace == ("/timer" + String(n)))
+        nsValid = true;
+    }
+    if (!nsValid) {
+      Serial.print("WARN: Invalid namespace in EEPROM ('");
+      Serial.print(_namespace);
+      Serial.println("') — resetting to '/' and re-saving");
       _namespace = "/";
+      // Overwrite the bad value in EEPROM immediately so the next boot is clean.
+      // _serverHost / _serverPort / _serverPath are already populated above.
+      EEPROM.write(250, 1);          // length of "/"
+      EEPROM.write(251, '/');        // the single character
+      EEPROM.commit();
+    }
 
     Serial.println("Loaded saved WebSocket settings:");
     Serial.print("Host: ");
