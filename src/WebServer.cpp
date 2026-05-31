@@ -769,7 +769,7 @@ void handleClient(TimerDisplay &timerDisplay) {
       client.print(F(">Single Timer (Default)</option>"));
 
       for (int i = 1; i <= 5; i++) {
-        String ns = "/timer" + String(i);
+        String ns = "/timer/" + String(i);
         client.print(F("<option value='"));
         client.print(ns);
         client.print(F("'"));
