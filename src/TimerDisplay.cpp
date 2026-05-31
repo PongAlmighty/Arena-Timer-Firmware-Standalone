@@ -15,7 +15,7 @@ TimerDisplay::TimerDisplay(Adafruit_Protomatter &matrix, Mode mode)
       _brightness(255),                              // Default full brightness
       _font_id(4), // Default to Sans Bold 12pt (ID 4)
       _threshold_count(0), _last_blink_ms(0), _blink_state(true),
-      _was_expired(false) {
+      _was_expired(false), _armed(false) {
   // Initialize cached positions as invalid
   _pos_single_digit_minutes.valid = false;
   _pos_double_digit_minutes.valid = false;
@@ -215,8 +215,39 @@ void TimerDisplay::drawTimeWithCenteredColon(const String &time_str,
 
 Timer &TimerDisplay::getTimer() { return _timer; }
 
+void TimerDisplay::setArmed(bool armed) {
+  if (armed && !_armed) {
+    // Transitioning to armed: reset blink to visible state for clean first cycle
+    _blink_state = true;
+    _last_blink_ms = millis();
+  } else if (!armed && _armed) {
+    // Transitioning to disarmed: reset to visible for clean handoff to normal rendering
+    _blink_state = true;
+  }
+  _armed = armed;
+}
+
 void TimerDisplay::update() {
   unsigned long current_ms = millis();
+
+  // Armed override: short-circuit all normal timer rendering
+  if (_armed) {
+    if (current_ms - _last_blink_ms >= 500) {
+      _blink_state = !_blink_state;
+      _last_blink_ms = current_ms;
+    }
+    _matrix.fillScreen(0);
+    if (_blink_state) {
+      _matrix.setFont(NULL);    // Force default 5x7 font for predictable sizing
+      _matrix.setTextSize(1);
+      _matrix.setTextColor(_matrix.color565(255, 200, 0)); // Warm yellow (BTN-07)
+      // "STOP?" at 5x7 font: 5 chars * 6px/char = 30px wide; center on 64px: x=17
+      _matrix.setCursor(17, 12); // x=17 centers 30px on 64px; y=12 centers 7px on 32px
+      _matrix.print("STOP?");
+    }
+    _matrix.show();
+    return; // Skip all expired / paused / running logic below
+  }
 
   // Handle flashing when expired (check this first, even if running)
   if (_timer.isExpired()) {

@@ -100,6 +100,10 @@ public:
   /// @return Reference to the Timer
   Timer &getTimer();
 
+  /// @brief Set armed overlay mode. When true, displays yellow "STOP?" blink at 1Hz.
+  /// Call each loop() with buttonHandler.isArmed() before update().
+  void setArmed(bool armed);
+
   /// @brief Update and draw the timer on the display. Call this in loop()
   void update();
 
@@ -136,6 +140,7 @@ private:
   unsigned long _last_blink_ms;
   bool _blink_state;
   bool _was_expired; // Track if we were expired in the last update
+  bool _armed; // Armed overlay flag — set by main.cpp each loop via setArmed()
 
   // Cached positions for different time formats to prevent jitter
   struct CachedPosition {
