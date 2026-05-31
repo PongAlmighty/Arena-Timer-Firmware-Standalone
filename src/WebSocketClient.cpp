@@ -473,3 +473,16 @@ void WebSocketClient::handleTimerUpdate(JsonObject &obj) {
     }
   }
 }
+
+void WebSocketClient::emitTimerControl(const char* action) {
+  if (strcmp(action, "start") == 0) {
+    DEBUG_PRINTLN("emitTimerControl: start");
+    _timer->start();
+  } else if (strcmp(action, "stop") == 0) {
+    DEBUG_PRINTLN("emitTimerControl: stop");
+    _timer->stop();
+  } else if (strcmp(action, "reset") == 0) {
+    DEBUG_PRINTLN("emitTimerControl: reset");
+    _timer->reset();
+  }
+}

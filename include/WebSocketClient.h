@@ -24,6 +24,9 @@ public:
   const char *getStatus();
   const char *getServerUrl();
 
+  // Timer control (Phase 2: local stub; Phase 3: emits Socket.IO then calls local)
+  void emitTimerControl(const char* action);
+
 private:
   Timer *_timer;
   WebSocketsClient _client;
