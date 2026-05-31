@@ -136,6 +136,7 @@ void loop() {
       wsClient->emitTimerControl("stop");
       wsClient->emitTimerControl("reset");
     }
+    timerDisplay.setResetOverlay(true);
   }
 
   if (buttonHandler.startStopPressed()) {

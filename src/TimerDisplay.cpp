@@ -15,7 +15,7 @@ TimerDisplay::TimerDisplay(Adafruit_Protomatter &matrix, Mode mode)
       _brightness(255),                              // Default full brightness
       _font_id(4), // Default to Sans Bold 12pt (ID 4)
       _threshold_count(0), _last_blink_ms(0), _blink_state(true),
-      _was_expired(false), _armed(false) {
+      _was_expired(false), _armed(false), _reset_overlay(false) {
   // Initialize cached positions as invalid
   _pos_single_digit_minutes.valid = false;
   _pos_double_digit_minutes.valid = false;
@@ -227,6 +227,10 @@ void TimerDisplay::setArmed(bool armed) {
   _armed = armed;
 }
 
+void TimerDisplay::setResetOverlay(bool reset) {
+  _reset_overlay = reset;
+}
+
 void TimerDisplay::update() {
   unsigned long current_ms = millis();
 
@@ -247,6 +251,22 @@ void TimerDisplay::update() {
     }
     _matrix.show();
     return; // Skip all expired / paused / running logic below
+  }
+
+  // Reset overlay: solid red RESET — clears automatically when timer starts
+  if (_reset_overlay) {
+    if (_timer.isRunning()) {
+      _reset_overlay = false; // Timer started; fall through to normal rendering
+    } else {
+      _matrix.fillScreen(0);
+      _matrix.setFont(NULL);
+      _matrix.setTextSize(1);
+      _matrix.setTextColor(_matrix.color565(255, 0, 0));
+      _matrix.setCursor(17, 12); // Same centering as STOP? (5 chars * 6px = 30px on 64px)
+      _matrix.print("RESET");
+      _matrix.show();
+      return;
+    }
   }
 
   // Handle flashing when expired (check this first, even if running)

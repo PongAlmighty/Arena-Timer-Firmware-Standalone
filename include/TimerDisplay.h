@@ -104,6 +104,10 @@ public:
   /// Call each loop() with buttonHandler.isArmed() before update().
   void setArmed(bool armed);
 
+  /// @brief Show solid red "RESET" overlay. Clears automatically when timer starts.
+  /// Call after a chord reset action in main.cpp.
+  void setResetOverlay(bool reset);
+
   /// @brief Update and draw the timer on the display. Call this in loop()
   void update();
 
@@ -140,7 +144,8 @@ private:
   unsigned long _last_blink_ms;
   bool _blink_state;
   bool _was_expired; // Track if we were expired in the last update
-  bool _armed; // Armed overlay flag — set by main.cpp each loop via setArmed()
+  bool _armed;         // Armed overlay flag — set by main.cpp each loop via setArmed()
+  bool _reset_overlay; // Reset overlay flag — shows solid red RESET, clears on timer start
 
   // Cached positions for different time formats to prevent jitter
   struct CachedPosition {
