@@ -129,8 +129,26 @@ void setup() {
 // ----------------------------------------------------------------------------
 void loop() {
   buttonHandler.poll();
-  timerDisplay.update();
+  timerDisplay.setArmed(buttonHandler.isArmed());
 
+  if (buttonHandler.stopResetPressed()) {
+    if (wsClient) {
+      wsClient->emitTimerControl("stop");
+      wsClient->emitTimerControl("reset");
+    }
+  }
+
+  if (buttonHandler.startStopPressed()) {
+    if (wsClient) {
+      if (timerDisplay.getTimer().isRunning()) {
+        wsClient->emitTimerControl("stop");
+      } else {
+        wsClient->emitTimerControl("start");
+      }
+    }
+  }
+
+  timerDisplay.update();
   Ethernet.maintain();
   WebServer::handleClient(timerDisplay);
   if (wsClient) {
