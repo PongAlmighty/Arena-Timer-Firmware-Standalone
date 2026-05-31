@@ -19,7 +19,8 @@ WebSocketClient::WebSocketClient(Timer *timer)
     : _timer(timer), _connected(false), _connectionAttempted(false),
       _manuallyDisconnected(false), _lastReconnectAttempt(0),
       _reconnectInterval(10000), _autoReconnect(true), _serverPort(8765),
-      _namespace("/"), _connectInProgress(false), _consecutiveFailures(0) {
+      _namespace("/"), _connectInProgress(false), _consecutiveFailures(0),
+      _suppressAction(""), _suppressUntilMs(0), _initialSyncPending(false) {
 
   // Load saved settings
   loadSettings();
@@ -295,6 +296,7 @@ void WebSocketClient::handleWebSocketEvent(WStype_t type, uint8_t *payload,
     }
     _connected = false;
     _connectInProgress = false; // Allow new connection attempts
+    _initialSyncPending = false;  // Reset sync state on disconnect (Pitfall 4)
 
     // If this was a manual disconnect, ensure we stay disconnected
     if (_manuallyDisconnected) {
@@ -382,6 +384,21 @@ void WebSocketClient::handleWebSocketEvent(WStype_t type, uint8_t *payload,
         DEBUG_PRINTLN("Processing timer_update event");
         JsonObject obj = arr[1];
         handleTimerUpdate(obj);
+      } else if (arr.size() >= 2 && arr[0] == "timer_status" &&
+                 arr[1].is<JsonObject>()) {
+        // D-09/D-10: apply authoritative time_left from FightTimer (SYNC-03)
+        JsonObject status = arr[1];
+        int time_left = status["time_left"] | 0;
+        if (time_left > 0) {
+          unsigned int min = (unsigned int)(time_left / 60);
+          unsigned int sec = (unsigned int)(time_left % 60);
+          // Order: setDuration -> reset -> start (Pitfall 5 — do not reorder)
+          _timer->setDuration({min, sec, 0});
+          _timer->reset();
+          _timer->start();
+          DEBUG_PRINT("SYNC-03 applied: time_left=");
+          DEBUG_PRINTLN(time_left);
+        }
       }
     } else if (doc["timer_update"].is<JsonObject>()) {
       JsonObject obj = doc["timer_update"];
@@ -426,14 +443,38 @@ void WebSocketClient::handleTimerUpdate(JsonObject &obj) {
     return;
   }
 
+  // D-05: echo suppression — one-shot, action-matched, 500ms window (SYNC-02)
+  if (_suppressAction.length() > 0 &&
+      _suppressAction == action &&
+      millis() < _suppressUntilMs) {
+    DEBUG_PRINT("Echo suppressed: ");
+    DEBUG_PRINTLN(action);
+    _suppressAction = "";  // consume — one-shot (D-05)
+    return;
+  }
+
   DEBUG_PRINT("Timer action: ");
   DEBUG_PRINTLN(action);
 
   if (strcmp(action, "start") == 0) {
-    // Just start the timer - duration setting and reset are handled by reset
-    // events
-    DEBUG_PRINTLN("Starting timer (resume if paused, or start if reset)");
-    _timer->start();
+    // Pitfall 6: ignore heartbeat broadcasts (no request_timer_status needed)
+    if (obj["is_heartbeat"].as<bool>()) {
+      DEBUG_PRINTLN("Heartbeat start: ignoring");
+      return;
+    }
+
+    _timer->start();  // D-08: start immediately, then adjust time
+
+    if (_initialSyncPending) {
+      // D-11: initial sync reset already set the exact duration; skip round-trip
+      _initialSyncPending = false;
+      DEBUG_PRINTLN("Initial sync start: skipping request_timer_status");
+    } else {
+      // D-08/D-07: runtime start — request authoritative remaining time
+      // CRITICAL: timer_id:1 required — empty payload returns timers_status (plural)
+      _client.sendTXT("42[\"request_timer_status\",{\"timer_id\":1}]");
+      DEBUG_PRINTLN("Runtime start: emitted request_timer_status");
+    }
 
   } else if (strcmp(action, "stop") == 0) {
     DEBUG_PRINTLN("Stopping timer");
@@ -453,6 +494,12 @@ void WebSocketClient::handleTimerUpdate(JsonObject &obj) {
     // Set duration and reset - timer will stop and not auto-restart
     _timer->setDuration({(unsigned int)minutes, (unsigned int)seconds, 0});
     _timer->reset();
+
+    // D-11/D-12: flag that next start event is initial sync (skip round-trip)
+    if (obj["is_initial_sync"].as<bool>()) {
+      _initialSyncPending = true;
+      DEBUG_PRINTLN("is_initial_sync: next start skips request_timer_status");
+    }
 
   } else if (strcmp(action, "settings") == 0) {
     // Handle settings update
@@ -475,14 +522,23 @@ void WebSocketClient::handleTimerUpdate(JsonObject &obj) {
 }
 
 void WebSocketClient::emitTimerControl(const char* action) {
+  if (_connected) {
+    // D-01: emit before local state change (SYNC-01)
+    String msg = String("42[\"timer_control\",{\"action\":\"") + action + "\"}]";
+    _client.sendTXT(msg);
+    DEBUG_PRINT("emitTimerControl: sent ");
+    DEBUG_PRINTLN(msg);
+
+    // D-04/D-06: set suppression window only when connected (SYNC-02)
+    _suppressAction = String(action);
+    _suppressUntilMs = millis() + 500UL;
+  }
+  // D-02: local timer always actuates regardless of connection
   if (strcmp(action, "start") == 0) {
-    DEBUG_PRINTLN("emitTimerControl: start");
     _timer->start();
   } else if (strcmp(action, "stop") == 0) {
-    DEBUG_PRINTLN("emitTimerControl: stop");
     _timer->stop();
   } else if (strcmp(action, "reset") == 0) {
-    DEBUG_PRINTLN("emitTimerControl: reset");
     _timer->reset();
   }
 }
