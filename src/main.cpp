@@ -42,6 +42,12 @@ const char *hostname = "arenatimer";
 // SETUP
 // ----------------------------------------------------------------------------
 void setup() {
+  // Explicitly initialize GPIO 0 (OE) and GPIO 1 (LAT) as SIO outputs to override UART0 peripheral muxing
+  gpio_init(0);
+  gpio_set_dir(0, GPIO_OUT);
+  gpio_init(1);
+  gpio_set_dir(1, GPIO_OUT);
+
   Serial.begin(115200);
   Serial.println("\n=== Arena Timer Booting ===");
 
