@@ -15,7 +15,7 @@ TimerDisplay::TimerDisplay(Adafruit_Protomatter &matrix, Mode mode)
       _brightness(255),                              // Default full brightness
       _font_id(4), // Default to Sans Bold 12pt (ID 4)
       _threshold_count(0), _last_blink_ms(0), _blink_state(true),
-      _was_expired(false), _armed(false), _reset_overlay(false) {
+      _was_expired(false), _armed(false), _chord_confirmed(false) {
   // Initialize cached positions as invalid
   _pos_single_digit_minutes.valid = false;
   _pos_double_digit_minutes.valid = false;
@@ -221,52 +221,44 @@ void TimerDisplay::setArmed(bool armed) {
     _blink_state = true;
     _last_blink_ms = millis();
   } else if (!armed && _armed) {
-    // Transitioning to disarmed: reset to visible for clean handoff to normal rendering
+    // Transitioning to disarmed: clear chord confirmation and reset blink state
+    _chord_confirmed = false;
     _blink_state = true;
   }
   _armed = armed;
 }
 
-void TimerDisplay::setResetOverlay(bool reset) {
-  _reset_overlay = reset;
+void TimerDisplay::setChordConfirmed() {
+  _chord_confirmed = true;
 }
 
 void TimerDisplay::update() {
   unsigned long current_ms = millis();
 
-  // Armed override: short-circuit all normal timer rendering
+  // Armed overlay: B2 held — shows RESET? flashing yellow, or solid red RESET. after chord
   if (_armed) {
-    if (current_ms - _last_blink_ms >= 500) {
-      _blink_state = !_blink_state;
-      _last_blink_ms = current_ms;
-    }
     _matrix.fillScreen(0);
-    if (_blink_state) {
-      _matrix.setFont(NULL);    // Force default 5x7 font for predictable sizing
-      _matrix.setTextSize(1);
-      _matrix.setTextColor(_matrix.color565(255, 200, 0)); // Warm yellow (BTN-07)
-      // "STOP?" at 5x7 font: 5 chars * 6px/char = 30px wide; center on 64px: x=17
-      _matrix.setCursor(17, 12); // x=17 centers 30px on 64px; y=12 centers 7px on 32px
-      _matrix.print("STOP?");
+    _matrix.setFont(NULL);
+    _matrix.setTextSize(1);
+    if (_chord_confirmed) {
+      // B1 was pressed while armed — solid red RESET. until B2 released
+      _matrix.setTextColor(_matrix.color565(255, 0, 0));
+      _matrix.setCursor(14, 12); // "RESET." = 6 chars * 6px = 36px; center on 64px: (64-36)/2=14
+      _matrix.print("RESET.");
+    } else {
+      // B2 held, waiting — flash yellow RESET? at 1Hz
+      if (current_ms - _last_blink_ms >= 500) {
+        _blink_state = !_blink_state;
+        _last_blink_ms = current_ms;
+      }
+      if (_blink_state) {
+        _matrix.setTextColor(_matrix.color565(255, 200, 0)); // Warm yellow
+        _matrix.setCursor(14, 12); // "RESET?" = 6 chars * 6px = 36px; center: x=14
+        _matrix.print("RESET?");
+      }
     }
     _matrix.show();
-    return; // Skip all expired / paused / running logic below
-  }
-
-  // Reset overlay: solid red RESET — clears automatically when timer starts
-  if (_reset_overlay) {
-    if (_timer.isRunning()) {
-      _reset_overlay = false; // Timer started; fall through to normal rendering
-    } else {
-      _matrix.fillScreen(0);
-      _matrix.setFont(NULL);
-      _matrix.setTextSize(1);
-      _matrix.setTextColor(_matrix.color565(255, 0, 0));
-      _matrix.setCursor(17, 12); // Same centering as STOP? (5 chars * 6px = 30px on 64px)
-      _matrix.print("RESET");
-      _matrix.show();
-      return;
-    }
+    return;
   }
 
   // Handle flashing when expired (check this first, even if running)

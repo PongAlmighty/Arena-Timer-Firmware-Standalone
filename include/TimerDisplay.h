@@ -100,13 +100,13 @@ public:
   /// @return Reference to the Timer
   Timer &getTimer();
 
-  /// @brief Set armed overlay mode. When true, displays yellow "STOP?" blink at 1Hz.
+  /// @brief Set armed overlay mode. When true, flashes yellow "RESET?" at 1Hz.
   /// Call each loop() with buttonHandler.isArmed() before update().
   void setArmed(bool armed);
 
-  /// @brief Show solid red "RESET" overlay. Clears automatically when timer starts.
-  /// Call after a chord reset action in main.cpp.
-  void setResetOverlay(bool reset);
+  /// @brief Confirm chord reset while armed. Switches overlay to solid red "RESET."
+  /// Cleared automatically on disarm (B2 release).
+  void setChordConfirmed();
 
   /// @brief Update and draw the timer on the display. Call this in loop()
   void update();
@@ -144,8 +144,8 @@ private:
   unsigned long _last_blink_ms;
   bool _blink_state;
   bool _was_expired; // Track if we were expired in the last update
-  bool _armed;         // Armed overlay flag — set by main.cpp each loop via setArmed()
-  bool _reset_overlay; // Reset overlay flag — shows solid red RESET, clears on timer start
+  bool _armed;           // Armed overlay flag — set by main.cpp each loop via setArmed()
+  bool _chord_confirmed; // True after B1 pressed while armed; shows solid red RESET.
 
   // Cached positions for different time formats to prevent jitter
   struct CachedPosition {
