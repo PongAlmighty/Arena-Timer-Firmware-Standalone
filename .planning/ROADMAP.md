@@ -14,7 +14,7 @@ Three horizontal layers build the complete button-control and sync capability. P
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: ButtonHandler Foundation** - GPIO init, Bounce2 integration, ButtonHandler class scaffold (completed 2026-05-31)
-- [ ] **Phase 2: Button UX** - Start/stop toggle, chord gesture, armed display overlay
+- [x] **Phase 2: Button UX** - Start/stop toggle, chord gesture, armed display overlay (completed 2026-05-31)
 - [ ] **Phase 3: Socket.IO Integration** - emitTimerControl(), echo suppression, timer sync fix
 
 ## Phase Details
@@ -55,11 +55,11 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — ButtonHandler state machine (armed/disarmed, one-shot events) + WebSocketClient emitTimerControl stub
+- [x] 02-01-PLAN.md — ButtonHandler state machine (armed/disarmed, one-shot events) + WebSocketClient emitTimerControl stub
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 02-02-PLAN.md — TimerDisplay armed overlay (yellow STOP? blink) + main.cpp button event routing
+- [x] 02-02-PLAN.md — TimerDisplay armed overlay (yellow STOP? blink) + main.cpp button event routing
 
 ### Phase 3: Socket.IO Integration
 
@@ -72,7 +72,11 @@ Plans:
   2. After a local button emit, the echoed timer_update from FightTimer does not re-trigger the local timer; the suppression window is consumed on first match and does not block a subsequent legitimate remote action
   3. When FightTimer sends timer_update {action: start}, the Arena Timer's displayed countdown matches FightTimer's actual remaining time within one LAN RTT — the ~1s startup offset is eliminated
 
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+**Wave 1**
+
+- [ ] 03-01-PLAN.md — WebSocketClient.h private members + WebSocketClient.cpp SYNC-01/02/03 implementation
 
 ## Progress
 
@@ -82,5 +86,5 @@ Phases execute in numeric order: 1 → 2 → 3
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. ButtonHandler Foundation | 2/2 | Complete    | 2026-05-31 |
-| 2. Button UX | 0/2 | Not started | - |
-| 3. Socket.IO Integration | 0/TBD | Not started | - |
+| 2. Button UX | 2/2 | Complete   | 2026-05-31 |
+| 3. Socket.IO Integration | 0/1 | Not started | - |
