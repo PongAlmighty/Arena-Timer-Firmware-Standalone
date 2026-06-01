@@ -491,7 +491,7 @@ void WebSocketClient::handleTimerUpdate(JsonObject &obj) {
     } else {
       // D-08/D-07: runtime start — request authoritative remaining time
       // CRITICAL: timer_id:1 required — empty payload returns timers_status (plural)
-      _client.sendTXT("42[\"request_timer_status\",{\"timer_id\":1}]");
+      _client.sendTXT("42" + _namespace + ",[\"request_timer_status\",{\"timer_id\":1}]");
       DEBUG_PRINTLN("Runtime start: emitted request_timer_status");
     }
 
@@ -543,7 +543,7 @@ void WebSocketClient::handleTimerUpdate(JsonObject &obj) {
 void WebSocketClient::emitTimerControl(const char* action) {
   if (_connected) {
     // D-01: emit before local state change (SYNC-01)
-    String msg = String("42[\"timer_control\",{\"action\":\"") + action + "\"}]";
+    String msg = String("42") + _namespace + ",[\"timer_control\",{\"action\":\"" + action + "\"}]";
     _client.sendTXT(msg);
     DEBUG_PRINT("emitTimerControl: sent ");
     DEBUG_PRINTLN(msg);

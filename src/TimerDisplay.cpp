@@ -300,6 +300,8 @@ void TimerDisplay::update() {
 
 void TimerDisplay::draw() {
   _matrix.fillScreen(0); // Clear screen for double buffering
+  _matrix.setFont(_current_font);
+  _matrix.setTextSize(_text_size);
 
   Timer::Components time_to_show = getDisplayTime();
 
