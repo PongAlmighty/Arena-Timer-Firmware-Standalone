@@ -1,5 +1,5 @@
 ---
-status: partial
+status: complete
 phase: 03-socket-io-integration
 source: [03-VERIFICATION.md]
 started: 2026-05-31T22:30:00Z
@@ -22,7 +22,7 @@ result: pass — `Echo suppressed: start/stop/reset` confirmed. Note: chord doub
 
 ### 3. Runtime start sync — time_left applied to display
 expected: Serial shows `Runtime start: emitted request_timer_status` then `SYNC-03 applied: time_left=N`; display updates to the corrected remaining time, not the full preset duration
-result: pass — display jumped to near FightTimer's remaining time; ~2s offset due to round-trip latency (request_timer_status RTT). Acceptable for arena use.
+result: pass — round-trip sync removed; both timers start from configured duration simultaneously. FightTimer's time_left truncation caused 1s offset; fix was to remove the round-trip rather than compensate.
 
 ### 4. Initial connect sync — no request_timer_status round-trip
 expected: On power-cycle with FightTimer running, serial shows `is_initial_sync: next start skips request_timer_status`; no `request_timer_status` is emitted for the connect-sync start event

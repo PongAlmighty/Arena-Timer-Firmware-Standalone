@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: ButtonHandler Foundation** - GPIO init, Bounce2 integration, ButtonHandler class scaffold (completed 2026-05-31)
 - [x] **Phase 2: Button UX** - Start/stop toggle, chord gesture, armed display overlay (completed 2026-05-31)
-- [ ] **Phase 3: Socket.IO Integration** - emitTimerControl(), echo suppression, timer sync fix
+- [x] **Phase 3: Socket.IO Integration** - emitTimerControl(), echo suppression, timer sync fix
 
 ## Phase Details
 
@@ -76,7 +76,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 03-01-PLAN.md — WebSocketClient.h private members + WebSocketClient.cpp SYNC-01/02/03 implementation
+- [x] 03-01-PLAN.md — WebSocketClient.h private members + WebSocketClient.cpp SYNC-01/02/03 implementation
 
 ## Progress
 
@@ -87,4 +87,4 @@ Phases execute in numeric order: 1 → 2 → 3
 |-------|----------------|--------|-----------|
 | 1. ButtonHandler Foundation | 2/2 | Complete    | 2026-05-31 |
 | 2. Button UX | 2/2 | Complete   | 2026-05-31 |
-| 3. Socket.IO Integration | 0/1 | Not started | - |
+| 3. Socket.IO Integration | 1/1 | Complete | 2026-05-31 |

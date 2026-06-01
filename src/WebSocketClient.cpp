@@ -405,17 +405,17 @@ void WebSocketClient::handleWebSocketEvent(WStype_t type, uint8_t *payload,
         handleTimerUpdate(obj);
       } else if (arr.size() >= 2 && arr[0] == "timer_status" &&
                  arr[1].is<JsonObject>()) {
-        // D-09/D-10: apply authoritative time_left from FightTimer (SYNC-03)
+        // Apply authoritative time_left from FightTimer (initial sync path)
         JsonObject status = arr[1];
         int time_left = status["time_left"] | 0;
         if (time_left > 0) {
           unsigned int min = (unsigned int)(time_left / 60);
           unsigned int sec = (unsigned int)(time_left % 60);
-          // Order: setDuration -> reset -> start (Pitfall 5 — do not reorder)
+          // Order: setDuration -> reset -> start (do not reorder)
           _timer->setDuration({min, sec, 0});
           _timer->reset();
           _timer->start();
-          DEBUG_PRINT("SYNC-03 applied: time_left=");
+          DEBUG_PRINT("timer_status applied: time_left=");
           DEBUG_PRINTLN(time_left);
         }
       }
@@ -485,15 +485,12 @@ void WebSocketClient::handleTimerUpdate(JsonObject &obj) {
     _timer->start();  // D-08: start immediately, then adjust time
 
     if (_initialSyncPending) {
-      // D-11: initial sync reset already set the exact duration; skip round-trip
+      // initial sync reset already set the exact duration; skip round-trip
       _initialSyncPending = false;
-      DEBUG_PRINTLN("Initial sync start: skipping request_timer_status");
-    } else {
-      // D-08/D-07: runtime start — request authoritative remaining time
-      // CRITICAL: timer_id:1 required — empty payload returns timers_status (plural)
-      _client.sendTXT("42" + _namespace + ",[\"request_timer_status\",{\"timer_id\":1}]");
-      DEBUG_PRINTLN("Runtime start: emitted request_timer_status");
+      DEBUG_PRINTLN("Initial sync start: running from synced duration");
     }
+    // Runtime start: timer already started from configured duration above.
+    // Both clocks begin at the same moment — no round-trip needed.
 
   } else if (strcmp(action, "stop") == 0) {
     DEBUG_PRINTLN("Stopping timer");
