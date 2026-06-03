@@ -1,2 +1,2 @@
 #pragma once
-#include <Ethernet_Generic.h>
+#include <Ethernet_Generic.hpp>
