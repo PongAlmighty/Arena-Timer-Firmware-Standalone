@@ -1,6 +1,6 @@
 # Arena Timer Firmware — Codebase Bundle
 
-_Single-file snapshot for Claude.ai Project context. Generated 2026-06-07 14:35 UTC from branch `claude/happy-wright-ZNzX9` @ `93028bc`._
+_Single-file snapshot for Claude.ai Project context. Generated 2026-06-07 14:59 UTC from branch `claude/happy-wright-ZNzX9` @ `8580e1e`._
 
 This bundle contains the project's **own** firmware source, headers, build config, and docs.
 Third-party libraries (Adafruit_Protomatter, WebSockets, EthernetBonjour), binaries (3D models, KiCad, PDFs), and backups are intentionally excluded.
@@ -505,6 +505,11 @@ http://<timer-host>
 {"status": "error", "message": "Unknown action: <value>"}
 ```
 
+> **Notes:**
+> - **`pause` is REST-only.** The equivalent over the WebSocket feed is `stop` (see §4). Sending `stop` here returns an `Unknown action` error; sending `pause` over the WebSocket feed is silently ignored. Use the verb that matches the path.
+> - **`reset` here takes no parameters** — it resets the timer to the *currently configured* duration. To change the duration, use `POST /api/settings` (`duration`). (The WebSocket `reset` in §4 *does* accept `minutes`/`seconds`; the two paths differ.)
+> - **`flip` is vestigial and currently a no-op.** It returns `{"status":"success","message":"Orientation flipped"}` but does not rotate the display — the underlying orientation call is not wired up. Do not rely on it.
+
 ---
 
 ### `POST /api/settings` — Apply timer and display configuration
@@ -548,6 +553,8 @@ curl -X POST http://arenatimer.local/api/settings \
 | Field      | Type    | Description                              |
 |------------|---------|------------------------------------------|
 | `isPaused` | boolean | `true` if stopped after being started    |
+
+> **Limitation (relevant to state sync):** `isPaused` is the *only* state exposed. Internally the timer has three states — running, paused, idle — but `isPaused` is only `true` in the paused state. **Running and idle both report `isPaused:false` and are indistinguishable** through this endpoint. The firmware also does **not** expose the current remaining/elapsed time over REST or WebSocket. True bidirectional sync therefore requires either a firmware enhancement (a richer status payload) or an external state manager that tracks commands it has issued.
 
 ---
 
@@ -740,10 +747,10 @@ curl -X POST http://arenatimer.local/api -d "action=start"
 # Pause timer
 curl -X POST http://arenatimer.local/api -d "action=pause"
 
-# Reset timer
+# Reset timer (to currently configured duration; use /api/settings to change duration)
 curl -X POST http://arenatimer.local/api -d "action=reset"
 
-# Flip display orientation
+# Flip display orientation — NOTE: vestigial no-op, returns success but does nothing
 curl -X POST http://arenatimer.local/api -d "action=flip"
 
 # Set 3-minute duration with yellow/red thresholds
