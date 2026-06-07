@@ -10,7 +10,8 @@ Timer::Timer()
       _is_running(false), _is_idle(true) {}
 
 void Timer::setDuration(Components duration) {
-  _duration_ms = componentsToMilliseconds(duration);
+  // Add 999ms so the first displayed second is fully visible with floor-rounding.
+  _duration_ms = componentsToMilliseconds(duration) + 999UL;
 }
 
 void Timer::start() {

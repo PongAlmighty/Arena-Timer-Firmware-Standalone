@@ -423,7 +423,8 @@ Timer::Components TimerDisplay::getDisplayTime() {
   // If timer is running, show current time
   if (_timer.isRunning()) {
     if (_mode == Mode::TIMER) {
-      return _timer.getRemainingTime();
+      Timer::Components remaining = _timer.getRemainingTime();
+      return remaining;
     } else // STOPWATCH
     {
       return _timer.getElapsedTime();

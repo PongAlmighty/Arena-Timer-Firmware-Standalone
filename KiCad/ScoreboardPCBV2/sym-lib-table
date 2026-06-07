@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "RP2040")(type "KiCad")(uri "/Users/themightypong/Documents/PythonCode/Arena-Timer-Firmware-Standalone/RP2040_Shim.kicad_sym")(options "")(descr ""))
+)
